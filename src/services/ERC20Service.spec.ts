@@ -310,7 +310,8 @@ describe('ERC20Service', () => {
         'https://mainnet.infura.io/v3/test',
         '0x1234567890123456789012345678901234567890',
         '0xowneraddress',
-        '0xspenderaddress'
+        '0xspenderaddress',
+        Unit.WEI
       );
       
       expect(result).toBe(mockAllowance);
@@ -328,7 +329,8 @@ describe('ERC20Service', () => {
         'USDC',
         'ethereum',
         '0xowneraddress',
-        '0xspenderaddress'
+        '0xspenderaddress',
+        Unit.WEI
       );
       
       expect(result).toBe(mockAllowance);
@@ -347,7 +349,8 @@ describe('ERC20Service', () => {
         'USDC',
         'ethereum',
         '0xowneraddress',
-        '0xspenderaddress'
+        '0xspenderaddress',
+        Unit.WEI
       )).rejects.toThrow('Failed to get token allowance: Allowance call failed');
     });
   });

@@ -165,9 +165,10 @@ export class ERC20Service {
    * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
    * @param ownerAddress - The address of the token owner
    * @param spenderAddress - The address of the spender
+   * @param unit - The unit of the returned allowance (ETH or WEI)
    * @returns Promise<string> - The allowance as a string
    */
-  static async getAllowance(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, ownerAddress: string, spenderAddress: string): Promise<string> {
+  static async getAllowance(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, ownerAddress: string, spenderAddress: string, unit: Unit): Promise<string> {
     const { rpcUrl, tokenContractAddress } = ERC20Service.resolveContractParams(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
     try {
       const tokenContract = ERC20Service.createReadOnlyContract(rpcUrl, tokenContractAddress);
@@ -175,7 +176,15 @@ export class ERC20Service {
       // Call allowance function (read-only call)
       const allowance = await tokenContract.allowance.staticCall(ownerAddress, spenderAddress);
       
-      return allowance.toString();
+      // Convert allowance based on unit
+      if (unit === Unit.ETH) {
+        // Get token decimals and convert to ETH units
+        const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+        return ethers.formatUnits(allowance, decimals);
+      } else {
+        // WEI - return raw allowance
+        return allowance.toString();
+      }
     } catch (error) {
       throw new Error(`Failed to get token allowance: ${error instanceof Error ? error.message : String(error)}`);
     }
