@@ -1,0 +1,16 @@
+{
+    "USDC": {
+        "arbitrumsepolia": {
+            "router_address": "0x97695ca9aa0699C438B001be4fBe8750d1295956",
+            "collateral_address": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+        },
+        "sepolia": {
+            "router_address": "0xc97f971b0ddffC63e87365c2ce2F88107E79A167",
+            "collateral_address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+        },
+        "pruvtest": {
+            "router_address": "0xaE68d312149335B477Fa2EafFB1a1a18E287aC1b",
+            "collateral_address": "0xeCacC484026a02022565496E088CA0581cC36373"
+        }
+    }
+}
