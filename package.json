@@ -1,0 +1,30 @@
+{
+  "name": "pruv-bridge-example",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "start": "node dist/example.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/derryld3/pruv-bridge-example.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/derryld3/pruv-bridge-example/issues"
+  },
+  "homepage": "https://github.com/derryld3/pruv-bridge-example#readme",
+  "description": "",
+  "dependencies": {
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "@types/node": "^20.0.0"
+  }
+}
