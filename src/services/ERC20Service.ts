@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { ConfigUtil } from '../util/ConfigUtil';
+import { Unit } from '../util/Unit';
 
 const erc20Abi = require('../../contract/@openzeppelin/ERC20.abi.json');
 
@@ -113,19 +114,31 @@ export class ERC20Service {
    * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
    * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
    * @param spenderAddress - The address that will be approved to spend tokens
-   * @param amount - The amount of tokens to approve (in ETH units)
+   * @param amount - The amount of tokens to approve
+   * @param unit - The unit of the amount (ETH or WEI)
    * @param privateKey - The private key of the token owner
    * @returns Promise<string> - The transaction hash
    */
-  static async approve(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, spenderAddress: string, amount: string, privateKey: string): Promise<string> {
+  static async approve(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, spenderAddress: string, amount: string, unit: Unit, privateKey: string): Promise<string> {
     const { rpcUrl, tokenContractAddress } = ERC20Service.resolveContractParams(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
     try {
       const tokenContract = ERC20Service.createWriteContract(rpcUrl, tokenContractAddress, privateKey);
       
+      // Convert amount based on unit
+      let finalAmount: bigint;
+      if (unit === Unit.ETH) {
+        // Get token decimals and convert from ETH units
+        const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+        finalAmount = ethers.parseUnits(amount, decimals);
+      } else {
+        // WEI - use raw amount
+        finalAmount = BigInt(amount);
+      }
+      
       // Call approve function
       const tx = await tokenContract.approve(
         spenderAddress,
-        ethers.parseEther(amount)
+        finalAmount
       );
       
       // Wait for transaction confirmation

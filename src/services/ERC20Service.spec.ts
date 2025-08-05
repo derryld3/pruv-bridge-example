@@ -1,6 +1,7 @@
 import { ERC20Service } from './ERC20Service';
 import { ethers } from 'ethers';
 import { ConfigUtil } from '../util/ConfigUtil';
+import { Unit } from '../util/Unit';
 
 // Mock ethers
 jest.mock('ethers', () => ({
@@ -8,7 +9,8 @@ jest.mock('ethers', () => ({
     JsonRpcProvider: jest.fn(),
     Wallet: jest.fn(),
     Contract: jest.fn(),
-    parseEther: jest.fn()
+    parseEther: jest.fn(),
+    parseUnits: jest.fn()
   }
 }));
 
@@ -231,44 +233,47 @@ describe('ERC20Service', () => {
       (ConfigUtil.getCollateralAddress as jest.Mock).mockReturnValue('0xTokenAddress123');
     });
 
-    it('should approve tokens using RPC URL and contract address', async () => {
+    it('should approve tokens using RPC URL and contract address with ETH unit', async () => {
       mockContract.approve.mockResolvedValue(mockTransaction);
+      mockContract.decimals.staticCall.mockResolvedValue(18);
+      (ethers.parseUnits as jest.Mock).mockReturnValue(BigInt('100000000000000000000'));
       
       const result = await ERC20Service.approve(
         'https://mainnet.infura.io/v3/test',
         '0x1234567890123456789012345678901234567890',
         '0xspenderaddress',
         '100',
+        Unit.ETH,
         '0xprivatekey'
       );
       
       expect(result).toBe('0xabcdef1234567890');
-      expect(ethers.parseEther).toHaveBeenCalledWith('100');
+      expect(ethers.parseUnits).toHaveBeenCalledWith('100', 18);
       expect(mockContract.approve).toHaveBeenCalledWith(
         '0xspenderaddress',
-        '100000000000000000000'
+        BigInt('100000000000000000000')
       );
       expect(mockTransaction.wait).toHaveBeenCalled();
     });
 
-    it('should approve tokens using token symbol and chain name', async () => {
+    it('should approve tokens using token symbol and chain name with WEI unit', async () => {
       mockContract.approve.mockResolvedValue(mockTransaction);
       
       const result = await ERC20Service.approve(
         'USDC',
         'ethereum',
         '0xspenderaddress',
-        '50',
+        '50000000',
+        Unit.WEI,
         '0xprivatekey'
       );
       
       expect(result).toBe('0xabcdef1234567890');
       expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith('ethereum');
       expect(ConfigUtil.getCollateralAddress).toHaveBeenCalledWith('USDC', 'ethereum');
-      expect(ethers.parseEther).toHaveBeenCalledWith('50');
       expect(mockContract.approve).toHaveBeenCalledWith(
         '0xspenderaddress',
-        '50000000000000000000'
+        BigInt('50000000')
       );
     });
 
@@ -280,6 +285,7 @@ describe('ERC20Service', () => {
         'ethereum',
         '0xspenderaddress',
         '100',
+        Unit.ETH,
         '0xprivatekey'
       )).rejects.toThrow('Failed to approve token: Approve failed');
     });
