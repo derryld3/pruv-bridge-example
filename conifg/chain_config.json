@@ -1,0 +1,14 @@
+{
+    "sepolia": {
+        "chain_id": 11155111,
+        "rpc_urls": ["https://ethereum-sepolia.publicnode.com"]
+    },
+    "pruvtest": {
+        "chain_id": 7336,
+        "rpc_urls": ["https://rpc.testnet.pruv.network"]
+    },
+    "arbitrumsepolia": {
+        "chain_id": 421614,
+        "rpc_urls": ["https://arbitrum-sepolia.drpc.org"]
+    }
+}
