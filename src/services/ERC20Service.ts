@@ -93,9 +93,10 @@ export class ERC20Service {
    * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
    * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
    * @param holderAddress - The address to check balance for
+   * @param unit - The unit of the returned balance (ETH or WEI)
    * @returns Promise<string> - The balance as a string
    */
-  static async getBalance(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, holderAddress: string): Promise<string> {
+  static async getBalance(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, holderAddress: string, unit: Unit): Promise<string> {
     const { rpcUrl, tokenContractAddress } = ERC20Service.resolveContractParams(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
     try {
       const tokenContract = ERC20Service.createReadOnlyContract(rpcUrl, tokenContractAddress);
@@ -103,7 +104,15 @@ export class ERC20Service {
       // Call balanceOf function (read-only call)
       const balance = await tokenContract.balanceOf.staticCall(holderAddress);
       
-      return balance.toString();
+      // Convert balance based on unit
+      if (unit === Unit.ETH) {
+        // Get token decimals and convert to ETH units
+        const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+        return ethers.formatUnits(balance, decimals);
+      } else {
+        // WEI - return raw balance
+        return balance.toString();
+      }
     } catch (error) {
       throw new Error(`Failed to get token balance: ${error instanceof Error ? error.message : String(error)}`);
     }
