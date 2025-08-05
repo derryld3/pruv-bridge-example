@@ -69,6 +69,47 @@ export class ERC20Service {
   }
 
   /**
+   * Convert amount based on unit type
+   * @param amount - The amount to convert
+   * @param unit - The unit type (ETH or WEI)
+   * @param rpcUrlOrTokenSymbol - Token symbol or RPC URL for getting decimals
+   * @param tokenContractAddressOrChainName - Chain name or contract address for getting decimals
+   * @param isInput - Whether this is input conversion (ETH to WEI) or output conversion (WEI to ETH)
+   * @returns Promise<string | bigint> - Converted amount
+   * @private
+   */
+  private static async convertAmount(amount: string | bigint, unit: Unit, rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, isInput: boolean): Promise<string | bigint> {
+    if (unit === Unit.ETH) {
+      const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+      if (isInput) {
+        // Convert from ETH units to WEI (for input)
+        return ethers.parseUnits(amount as string, decimals);
+      } else {
+        // Convert from WEI to ETH units (for output)
+        return ethers.formatUnits(amount as bigint, decimals);
+      }
+    } else {
+      // WEI - return as-is
+      if (isInput) {
+        return BigInt(amount as string);
+      } else {
+        return (amount as bigint).toString();
+      }
+    }
+  }
+
+  /**
+   * Handle errors with consistent formatting
+   * @param error - The error to handle
+   * @param operation - The operation that failed
+   * @returns never - Always throws
+   * @private
+   */
+  private static handleError(error: unknown, operation: string): never {
+    throw new Error(`Failed to ${operation}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  /**
    * Get the decimals of an ERC20 token
    * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
    * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
@@ -84,7 +125,7 @@ export class ERC20Service {
       
       return Number(decimals);
     } catch (error) {
-      throw new Error(`Failed to get token decimals: ${error instanceof Error ? error.message : String(error)}`);
+      ERC20Service.handleError(error, 'get token decimals');
     }
   }
 
@@ -105,16 +146,9 @@ export class ERC20Service {
       const balance = await tokenContract.balanceOf.staticCall(holderAddress);
       
       // Convert balance based on unit
-      if (unit === Unit.ETH) {
-        // Get token decimals and convert to ETH units
-        const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
-        return ethers.formatUnits(balance, decimals);
-      } else {
-        // WEI - return raw balance
-        return balance.toString();
-      }
+      return await ERC20Service.convertAmount(balance, unit, rpcUrlOrTokenSymbol, tokenContractAddressOrChainName, false) as string;
     } catch (error) {
-      throw new Error(`Failed to get token balance: ${error instanceof Error ? error.message : String(error)}`);
+      ERC20Service.handleError(error, 'get token balance');
     }
   }
 
@@ -134,15 +168,7 @@ export class ERC20Service {
       const tokenContract = ERC20Service.createWriteContract(rpcUrl, tokenContractAddress, privateKey);
       
       // Convert amount based on unit
-      let finalAmount: bigint;
-      if (unit === Unit.ETH) {
-        // Get token decimals and convert from ETH units
-        const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
-        finalAmount = ethers.parseUnits(amount, decimals);
-      } else {
-        // WEI - use raw amount
-        finalAmount = BigInt(amount);
-      }
+      const finalAmount = await ERC20Service.convertAmount(amount, unit, rpcUrlOrTokenSymbol, tokenContractAddressOrChainName, true) as bigint;
       
       // Call approve function
       const tx = await tokenContract.approve(
@@ -155,7 +181,7 @@ export class ERC20Service {
       
       return receipt.hash;
     } catch (error) {
-      throw new Error(`Failed to approve token: ${error instanceof Error ? error.message : String(error)}`);
+      ERC20Service.handleError(error, 'approve token');
     }
   }
 
@@ -177,16 +203,9 @@ export class ERC20Service {
       const allowance = await tokenContract.allowance.staticCall(ownerAddress, spenderAddress);
       
       // Convert allowance based on unit
-      if (unit === Unit.ETH) {
-        // Get token decimals and convert to ETH units
-        const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
-        return ethers.formatUnits(allowance, decimals);
-      } else {
-        // WEI - return raw allowance
-        return allowance.toString();
-      }
+      return await ERC20Service.convertAmount(allowance, unit, rpcUrlOrTokenSymbol, tokenContractAddressOrChainName, false) as string;
     } catch (error) {
-      throw new Error(`Failed to get token allowance: ${error instanceof Error ? error.message : String(error)}`);
+      ERC20Service.handleError(error, 'get token allowance');
     }
   }
 }
