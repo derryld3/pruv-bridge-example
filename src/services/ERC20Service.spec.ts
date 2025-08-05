@@ -1,6 +1,6 @@
 import { ERC20Service } from './ERC20Service';
 import { ethers } from 'ethers';
-import { ConfigUtil } from './util/ConfigUtil';
+import { ConfigUtil } from '../util/ConfigUtil';
 
 // Mock ethers
 jest.mock('ethers', () => ({
@@ -13,7 +13,7 @@ jest.mock('ethers', () => ({
 }));
 
 // Mock ConfigUtil
-jest.mock('./util/ConfigUtil', () => ({
+jest.mock('../util/ConfigUtil', () => ({
   ConfigUtil: {
     getRpcUrl: jest.fn(),
     getCollateralAddress: jest.fn()
@@ -21,7 +21,7 @@ jest.mock('./util/ConfigUtil', () => ({
 }));
 
 // Mock ERC20 ABI
-jest.mock('../contract/@openzeppelin/ERC20.abi.json', () => ([
+jest.mock('../../contract/@openzeppelin/ERC20.abi.json', () => ([
   {
     "inputs": [],
     "name": "decimals",

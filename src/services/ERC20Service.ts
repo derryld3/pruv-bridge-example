@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
-import { ConfigUtil } from './util/ConfigUtil';
+import { ConfigUtil } from '../util/ConfigUtil';
 
-const erc20Abi = require('../contract/@openzeppelin/ERC20.abi.json');
+const erc20Abi = require('../../contract/@openzeppelin/ERC20.abi.json');
 
 /**
  * ERC20 Service static utility class for interacting with ERC20 tokens
