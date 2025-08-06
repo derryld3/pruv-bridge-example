@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Coverage reports
+coverage/
+
+# Configuration files
+*.json
+*.md
+
+# Environment files
+.env*
+
+# Lock files
+package-lock.json
+yarn.lock

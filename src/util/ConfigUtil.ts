@@ -16,23 +16,25 @@ interface AssetsConfig {
 }
 
 // Import configuration files directly
-const chainConfig: ChainConfig = require('../../conifg/chain_config.json');
-const assetsConfig: AssetsConfig = require('../../conifg/assets_config.json');
+import * as chainConfigData from '../../conifg/chain_config.json';
+import * as assetsConfigData from '../../conifg/assets_config.json';
+
+const chainConfig: ChainConfig = chainConfigData as ChainConfig;
+const assetsConfig: AssetsConfig = assetsConfigData as AssetsConfig;
 
 /**
  * Static utility class for handling configuration mappings
  */
 export class ConfigUtil {
-
   /**
    * Private constructor to prevent instantiation
    * @private
    */
   private constructor() {
-    throw new Error('ConfigUtil is a static utility class and cannot be instantiated');
+    throw new Error(
+      'ConfigUtil is a static utility class and cannot be instantiated',
+    );
   }
-
-
 
   /**
    * Get RPC URL for a given chain name
@@ -85,7 +87,9 @@ export class ConfigUtil {
 
     const chainInfo = assetInfo[chainName];
     if (!chainInfo) {
-      throw new Error(`Asset '${assetName}' not available on chain '${chainName}'`);
+      throw new Error(
+        `Asset '${assetName}' not available on chain '${chainName}'`,
+      );
     }
 
     return chainInfo.router_address;
@@ -105,7 +109,9 @@ export class ConfigUtil {
 
     const chainInfo = assetInfo[chainName];
     if (!chainInfo) {
-      throw new Error(`Asset '${assetName}' not available on chain '${chainName}'`);
+      throw new Error(
+        `Asset '${assetName}' not available on chain '${chainName}'`,
+      );
     }
 
     return chainInfo.collateral_address;
