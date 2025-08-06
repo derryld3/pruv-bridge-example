@@ -79,41 +79,7 @@ describe('ERC20Service', () => {
     });
   });
 
-  describe('resolveContractParams', () => {
-    beforeEach(() => {
-      (ConfigUtil.getRpcUrl as jest.Mock).mockReturnValue('https://mock-rpc.com');
-      (ConfigUtil.getCollateralAddress as jest.Mock).mockReturnValue('0xTokenAddress123');
-    });
 
-    it('should resolve direct usage with RPC URL and contract address', () => {
-      const rpcUrl = 'https://mainnet.infura.io/v3/test';
-      const contractAddress = '0x1234567890123456789012345678901234567890';
-      
-      // Access private method for testing
-      const result = (ERC20Service as any).resolveContractParams(rpcUrl, contractAddress);
-      
-      expect(result).toEqual({
-        rpcUrl: rpcUrl,
-        tokenContractAddress: contractAddress
-      });
-      expect(ConfigUtil.getRpcUrl).not.toHaveBeenCalled();
-      expect(ConfigUtil.getCollateralAddress).not.toHaveBeenCalled();
-    });
-
-    it('should resolve new usage with token symbol and chain name', () => {
-      const tokenSymbol = 'USDC';
-      const chainName = 'ethereum';
-      
-      const result = (ERC20Service as any).resolveContractParams(tokenSymbol, chainName);
-      
-      expect(result).toEqual({
-        rpcUrl: 'https://mock-rpc.com',
-        tokenContractAddress: '0xTokenAddress123'
-      });
-      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith(chainName);
-      expect(ConfigUtil.getCollateralAddress).toHaveBeenCalledWith(tokenSymbol, chainName);
-    });
-  });
 
   describe('createReadOnlyContract', () => {
     it('should create a read-only contract instance', () => {
@@ -157,18 +123,6 @@ describe('ERC20Service', () => {
       (ConfigUtil.getCollateralAddress as jest.Mock).mockReturnValue('0xTokenAddress123');
     });
 
-    it('should get decimals using RPC URL and contract address', async () => {
-      mockContract.decimals.staticCall.mockResolvedValue(18);
-      
-      const result = await ERC20Service.getDecimals(
-        'https://mainnet.infura.io/v3/test',
-        '0x1234567890123456789012345678901234567890'
-      );
-      
-      expect(result).toBe(18);
-      expect(mockContract.decimals.staticCall).toHaveBeenCalled();
-    });
-
     it('should get decimals using token symbol and chain name', async () => {
       mockContract.decimals.staticCall.mockResolvedValue(6);
       
@@ -194,18 +148,15 @@ describe('ERC20Service', () => {
       (ConfigUtil.getCollateralAddress as jest.Mock).mockReturnValue('0xTokenAddress123');
     });
 
-    it('should get balance using RPC URL and contract address with WEI unit', async () => {
+    it('should get balance using token symbol and chain name with WEI unit', async () => {
       const mockBalance = '1000000000000000000'; // 1 token with 18 decimals
       mockContract.balanceOf.staticCall.mockResolvedValue(mockBalance);
       
-      const result = await ERC20Service.getBalance(
-        'https://mainnet.infura.io/v3/test',
-        '0x1234567890123456789012345678901234567890',
-        '0xholderaddress',
-        Unit.WEI
-      );
+      const result = await ERC20Service.getBalance('USDC', 'ethereum', '0xholderaddress', Unit.WEI);
       
       expect(result).toBe(mockBalance);
+      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith('ethereum');
+      expect(ConfigUtil.getCollateralAddress).toHaveBeenCalledWith('USDC', 'ethereum');
       expect(mockContract.balanceOf.staticCall).toHaveBeenCalledWith('0xholderaddress');
     });
 
@@ -238,14 +189,14 @@ describe('ERC20Service', () => {
       (ConfigUtil.getCollateralAddress as jest.Mock).mockReturnValue('0xTokenAddress123');
     });
 
-    it('should approve tokens using RPC URL and contract address with ETH unit', async () => {
+    it('should approve tokens using token symbol and chain name with ETH unit', async () => {
       mockContract.approve.mockResolvedValue(mockTransaction);
       mockContract.decimals.staticCall.mockResolvedValue(18);
       (ethers.parseUnits as jest.Mock).mockReturnValue(BigInt('100000000000000000000'));
       
       const result = await ERC20Service.approve(
-        'https://mainnet.infura.io/v3/test',
-        '0x1234567890123456789012345678901234567890',
+        'USDC',
+        'ethereum',
         '0xspenderaddress',
         '100',
         Unit.ETH,
@@ -253,6 +204,8 @@ describe('ERC20Service', () => {
       );
       
       expect(result).toBe('0xabcdef1234567890');
+      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith('ethereum');
+      expect(ConfigUtil.getCollateralAddress).toHaveBeenCalledWith('USDC', 'ethereum');
       expect(ethers.parseUnits).toHaveBeenCalledWith('100', 18);
       expect(mockContract.approve).toHaveBeenCalledWith(
         '0xspenderaddress',
@@ -300,25 +253,6 @@ describe('ERC20Service', () => {
     beforeEach(() => {
       (ConfigUtil.getRpcUrl as jest.Mock).mockReturnValue('https://mock-rpc.com');
       (ConfigUtil.getCollateralAddress as jest.Mock).mockReturnValue('0xTokenAddress123');
-    });
-
-    it('should get allowance using RPC URL and contract address', async () => {
-      const mockAllowance = '500000000000000000000'; // 500 tokens
-      mockContract.allowance.staticCall.mockResolvedValue(mockAllowance);
-      
-      const result = await ERC20Service.getAllowance(
-        'https://mainnet.infura.io/v3/test',
-        '0x1234567890123456789012345678901234567890',
-        '0xowneraddress',
-        '0xspenderaddress',
-        Unit.WEI
-      );
-      
-      expect(result).toBe(mockAllowance);
-      expect(mockContract.allowance.staticCall).toHaveBeenCalledWith(
-        '0xowneraddress',
-        '0xspenderaddress'
-      );
     });
 
     it('should get allowance using token symbol and chain name', async () => {

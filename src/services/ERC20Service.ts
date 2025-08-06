@@ -14,31 +14,7 @@ export class ERC20Service {
     throw new Error('ERC20Service is a static utility class and cannot be instantiated');
   }
 
-  /**
-   * Resolve RPC URL and token contract address from flexible parameters
-   * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
-   * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
-   * @returns Object containing resolved rpcUrl and tokenContractAddress
-   * @private
-   */
-  private static resolveContractParams(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string): { rpcUrl: string; tokenContractAddress: string } {
-    // Check if first parameter looks like an RPC URL (contains http/https)
-    if (rpcUrlOrTokenSymbol.startsWith('http')) {
-      // Traditional usage: (rpcUrl, tokenContractAddress)
-      return {
-        rpcUrl: rpcUrlOrTokenSymbol,
-        tokenContractAddress: tokenContractAddressOrChainName
-      };
-    } else {
-      // New usage: (tokenSymbol, chainName)
-      const tokenSymbol = rpcUrlOrTokenSymbol;
-      const chainName = tokenContractAddressOrChainName;
-      return {
-        rpcUrl: ConfigUtil.getRpcUrl(chainName),
-        tokenContractAddress: ConfigUtil.getCollateralAddress(tokenSymbol, chainName)
-      };
-    }
-  }
+
 
   /**
    * Create a contract instance for read-only operations
@@ -72,15 +48,15 @@ export class ERC20Service {
    * Convert amount based on unit type
    * @param amount - The amount to convert
    * @param unit - The unit type (ETH or WEI)
-   * @param rpcUrlOrTokenSymbol - Token symbol or RPC URL for getting decimals
-   * @param tokenContractAddressOrChainName - Chain name or contract address for getting decimals
+   * @param tokenSymbol - Token symbol for getting decimals
+   * @param chainName - Chain name for getting decimals
    * @param isInput - Whether this is input conversion (ETH to WEI) or output conversion (WEI to ETH)
    * @returns Promise<string | bigint> - Converted amount
    * @private
    */
-  private static async convertAmount(amount: string | bigint, unit: Unit, rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, isInput: boolean): Promise<string | bigint> {
+  private static async convertAmount(amount: string | bigint, unit: Unit, tokenSymbol: string, chainName: string, isInput: boolean): Promise<string | bigint> {
     if (unit === Unit.ETH) {
-      const decimals = await ERC20Service.getDecimals(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+      const decimals = await ERC20Service.getDecimals(tokenSymbol, chainName);
       if (isInput) {
         // Convert from ETH units to WEI (for input)
         return ethers.parseUnits(amount as string, decimals);
@@ -111,12 +87,13 @@ export class ERC20Service {
 
   /**
    * Get the decimals of an ERC20 token
-   * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
-   * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
+   * @param tokenSymbol - The token symbol
+   * @param chainName - The chain name
    * @returns Promise<number> - The number of decimals
    */
-  static async getDecimals(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string): Promise<number> {
-    const { rpcUrl, tokenContractAddress } = ERC20Service.resolveContractParams(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+  static async getDecimals(tokenSymbol: string, chainName: string): Promise<number> {
+    const rpcUrl = ConfigUtil.getRpcUrl(chainName);
+    const tokenContractAddress = ConfigUtil.getCollateralAddress(tokenSymbol, chainName);
     try {
       const tokenContract = ERC20Service.createReadOnlyContract(rpcUrl, tokenContractAddress);
       
@@ -131,14 +108,15 @@ export class ERC20Service {
 
   /**
    * Get the balance of a token holder
-   * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
-   * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
+   * @param tokenSymbol - The token symbol
+   * @param chainName - The chain name
    * @param holderAddress - The address to check balance for
    * @param unit - The unit of the returned balance (ETH or WEI)
    * @returns Promise<string> - The balance as a string
    */
-  static async getBalance(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, holderAddress: string, unit: Unit): Promise<string> {
-    const { rpcUrl, tokenContractAddress } = ERC20Service.resolveContractParams(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+  static async getBalance(tokenSymbol: string, chainName: string, holderAddress: string, unit: Unit): Promise<string> {
+    const rpcUrl = ConfigUtil.getRpcUrl(chainName);
+    const tokenContractAddress = ConfigUtil.getCollateralAddress(tokenSymbol, chainName);
     try {
       const tokenContract = ERC20Service.createReadOnlyContract(rpcUrl, tokenContractAddress);
       
@@ -146,7 +124,7 @@ export class ERC20Service {
       const balance = await tokenContract.balanceOf.staticCall(holderAddress);
       
       // Convert balance based on unit
-      return await ERC20Service.convertAmount(balance, unit, rpcUrlOrTokenSymbol, tokenContractAddressOrChainName, false) as string;
+      return await ERC20Service.convertAmount(balance, unit, tokenSymbol, chainName, false) as string;
     } catch (error) {
       ERC20Service.handleError(error, 'get token balance');
     }
@@ -154,21 +132,22 @@ export class ERC20Service {
 
   /**
    * Approve a spender to spend tokens on behalf of the owner
-   * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
-   * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
+   * @param tokenSymbol - The token symbol
+   * @param chainName - The chain name
    * @param spenderAddress - The address that will be approved to spend tokens
    * @param amount - The amount of tokens to approve
    * @param unit - The unit of the amount (ETH or WEI)
    * @param privateKey - The private key of the token owner
    * @returns Promise<string> - The transaction hash
    */
-  static async approve(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, spenderAddress: string, amount: string, unit: Unit, privateKey: string): Promise<string> {
-    const { rpcUrl, tokenContractAddress } = ERC20Service.resolveContractParams(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+  static async approve(tokenSymbol: string, chainName: string, spenderAddress: string, amount: string, unit: Unit, privateKey: string): Promise<string> {
+    const rpcUrl = ConfigUtil.getRpcUrl(chainName);
+    const tokenContractAddress = ConfigUtil.getCollateralAddress(tokenSymbol, chainName);
     try {
       const tokenContract = ERC20Service.createWriteContract(rpcUrl, tokenContractAddress, privateKey);
       
       // Convert amount based on unit
-      const finalAmount = await ERC20Service.convertAmount(amount, unit, rpcUrlOrTokenSymbol, tokenContractAddressOrChainName, true) as bigint;
+      const finalAmount = await ERC20Service.convertAmount(amount, unit, tokenSymbol, chainName, true) as bigint;
       
       // Call approve function
       const tx = await tokenContract.approve(
@@ -187,15 +166,16 @@ export class ERC20Service {
 
   /**
    * Get the allowance of a spender for a specific owner
-   * @param rpcUrlOrTokenSymbol - The RPC URL of the blockchain network OR token symbol
-   * @param tokenContractAddressOrChainName - The address of the ERC20 token contract OR chain name
+   * @param tokenSymbol - The token symbol
+   * @param chainName - The chain name
    * @param ownerAddress - The address of the token owner
    * @param spenderAddress - The address of the spender
    * @param unit - The unit of the returned allowance (ETH or WEI)
    * @returns Promise<string> - The allowance as a string
    */
-  static async getAllowance(rpcUrlOrTokenSymbol: string, tokenContractAddressOrChainName: string, ownerAddress: string, spenderAddress: string, unit: Unit): Promise<string> {
-    const { rpcUrl, tokenContractAddress } = ERC20Service.resolveContractParams(rpcUrlOrTokenSymbol, tokenContractAddressOrChainName);
+  static async getAllowance(tokenSymbol: string, chainName: string, ownerAddress: string, spenderAddress: string, unit: Unit): Promise<string> {
+    const rpcUrl = ConfigUtil.getRpcUrl(chainName);
+    const tokenContractAddress = ConfigUtil.getCollateralAddress(tokenSymbol, chainName);
     try {
       const tokenContract = ERC20Service.createReadOnlyContract(rpcUrl, tokenContractAddress);
       
@@ -203,7 +183,7 @@ export class ERC20Service {
       const allowance = await tokenContract.allowance.staticCall(ownerAddress, spenderAddress);
       
       // Convert allowance based on unit
-      return await ERC20Service.convertAmount(allowance, unit, rpcUrlOrTokenSymbol, tokenContractAddressOrChainName, false) as string;
+      return await ERC20Service.convertAmount(allowance, unit, tokenSymbol, chainName, false) as string;
     } catch (error) {
       ERC20Service.handleError(error, 'get token allowance');
     }
