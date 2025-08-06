@@ -1,8 +1,6 @@
 import { TokenRouterService } from './TokenRouterService';
 import { ethers } from 'ethers';
 import { ConfigUtil } from '../util/ConfigUtil';
-import { Unit } from '../util/Unit';
-import { ERC20Service } from './ERC20Service';
 
 // Mock ethers
 jest.mock('ethers', () => ({
