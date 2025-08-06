@@ -3,5 +3,5 @@
  */
 export enum Unit {
   ETH = 'ETH',
-  WEI = 'WEI'
+  WEI = 'WEI',
 }
