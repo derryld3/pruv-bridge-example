@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "start": "echo 'not available yet'",
+    "start": "npx ts-node src/main.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -23,9 +23,11 @@
   "homepage": "https://github.com/derryld3/pruv-bridge-example#readme",
   "description": "",
   "dependencies": {
+    "dotenv": "^17.2.1",
     "ethers": "^6.13.0"
   },
   "devDependencies": {
+    "@types/dotenv": "^6.1.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "jest": "^30.0.5",
