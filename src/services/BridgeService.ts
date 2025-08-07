@@ -42,7 +42,7 @@ export class BridgeService {
     destinationChain: string,
     receiverAddress: string,
     amount: string,
-    senderAddressOrPrivateKey: string
+    senderAddressOrPrivateKey: string,
   ): void {
     this.validateRequiredParameters({
       tokenSymbol,
@@ -58,11 +58,13 @@ export class BridgeService {
   /**
    * Validates and resolves sender address from address or private key
    */
-  private static validateAndResolveSenderAddress(senderAddressOrPrivateKey: string): string {
+  private static validateAndResolveSenderAddress(
+    senderAddressOrPrivateKey: string,
+  ): string {
     if (ethers.isAddress(senderAddressOrPrivateKey)) {
       return senderAddressOrPrivateKey;
     }
-    
+
     try {
       return new ethers.Wallet(senderAddressOrPrivateKey).address;
     } catch (error) {
@@ -74,7 +76,10 @@ export class BridgeService {
    * Validates receiver address format
    */
   private static validateReceiverAddress(receiverAddress: string): void {
-    if (!ethers.isAddress(receiverAddress) || !receiverAddress.startsWith('0x')) {
+    if (
+      !ethers.isAddress(receiverAddress) ||
+      !receiverAddress.startsWith('0x')
+    ) {
       throw new Error('Receiver address must be a valid Ethereum address');
     }
   }
@@ -82,7 +87,10 @@ export class BridgeService {
   /**
    * Validates that origin and destination chains are different
    */
-  private static validateChainDifference(originChain: string, destinationChain: string): void {
+  private static validateChainDifference(
+    originChain: string,
+    destinationChain: string,
+  ): void {
     if (originChain === destinationChain) {
       throw new Error('Origin and destination chains must be different');
     }
@@ -94,7 +102,7 @@ export class BridgeService {
   private static async validateDestinationRouter(
     tokenSymbol: string,
     originChain: string,
-    destinationChain: string
+    destinationChain: string,
   ): Promise<void> {
     const destinationDomainId = ConfigUtil.getDomainId(destinationChain);
     const destinationRouterAddress = await TokenRouterService.routers(
@@ -103,7 +111,10 @@ export class BridgeService {
       destinationDomainId,
     );
 
-    if (!destinationRouterAddress || destinationRouterAddress === ethers.ZeroAddress) {
+    if (
+      !destinationRouterAddress ||
+      destinationRouterAddress === ethers.ZeroAddress
+    ) {
       throw new Error(
         `No router available for ${tokenSymbol} on destination chain ${destinationChain} (domain ${destinationDomainId})`,
       );
@@ -117,9 +128,12 @@ export class BridgeService {
     tokenSymbol: string,
     originChain: string,
     amount: string,
-    amountUnit: Unit
+    amountUnit: Unit,
   ): Promise<bigint> {
-    const tokenDecimals = await ERC20Service.getDecimals(tokenSymbol, originChain);
+    const tokenDecimals = await ERC20Service.getDecimals(
+      tokenSymbol,
+      originChain,
+    );
     return amountUnit === Unit.ETH
       ? ethers.parseUnits(amount, tokenDecimals)
       : ethers.parseUnits(amount, 0);
@@ -132,7 +146,7 @@ export class BridgeService {
     tokenSymbol: string,
     originChain: string,
     senderAddress: string,
-    amountInWei: bigint
+    amountInWei: bigint,
   ): Promise<void> {
     const senderTokenBalance = await TokenRouterService.balanceOf(
       tokenSymbol,
@@ -154,7 +168,7 @@ export class BridgeService {
     tokenSymbol: string,
     originChain: string,
     destinationChain: string,
-    senderAddress: string
+    senderAddress: string,
   ): Promise<void> {
     const bridgeFee = await TokenRouterService.quoteGasPayment(
       tokenSymbol,
@@ -195,23 +209,51 @@ export class BridgeService {
   ): Promise<boolean> {
     try {
       // Basic input validation
-      this.validateInputParameters(tokenSymbol, originChain, destinationChain, receiverAddress, amount, senderAddressOrPrivateKey);
-      
+      this.validateInputParameters(
+        tokenSymbol,
+        originChain,
+        destinationChain,
+        receiverAddress,
+        amount,
+        senderAddressOrPrivateKey,
+      );
+
       // Address validation and resolution
-      const senderAddress = this.validateAndResolveSenderAddress(senderAddressOrPrivateKey);
+      const senderAddress = this.validateAndResolveSenderAddress(
+        senderAddressOrPrivateKey,
+      );
       this.validateReceiverAddress(receiverAddress);
-      
+
       // Chain and router validation
       this.validateChainDifference(originChain, destinationChain);
-      await this.validateDestinationRouter(tokenSymbol, originChain, destinationChain);
-      
+      await this.validateDestinationRouter(
+        tokenSymbol,
+        originChain,
+        destinationChain,
+      );
+
       // Balance and amount validation
-      const amountInWei = await this.validateAndConvertAmount(tokenSymbol, originChain, amount, amountUnit);
-      await this.validateTokenBalance(tokenSymbol, originChain, senderAddress, amountInWei);
-      
+      const amountInWei = await this.validateAndConvertAmount(
+        tokenSymbol,
+        originChain,
+        amount,
+        amountUnit,
+      );
+      await this.validateTokenBalance(
+        tokenSymbol,
+        originChain,
+        senderAddress,
+        amountInWei,
+      );
+
       // Gas and native balance validation
-      await this.validateNativeBalanceForGas(tokenSymbol, originChain, destinationChain, senderAddress);
-      
+      await this.validateNativeBalanceForGas(
+        tokenSymbol,
+        originChain,
+        destinationChain,
+        senderAddress,
+      );
+
       return true;
     } catch (error) {
       throw new Error(
