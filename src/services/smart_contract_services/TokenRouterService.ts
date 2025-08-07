@@ -138,4 +138,37 @@ export class TokenRouterService {
       this.handleError(error, 'routers');
     }
   }
+
+  /**
+   * Get the balance of a specific account for the token
+   * @param tokenSymbol - The symbol of the token (e.g., 'USDC')
+   * @param chainName - The name of the chain where the router contract is deployed
+   * @param account - The address of the account to check balance for
+   * @returns Promise<string> - The balance amount as a string
+   */
+  static async balanceOf(
+    tokenSymbol: string,
+    chainName: string,
+    account: string,
+  ): Promise<string> {
+    try {
+      const rpcUrl = ConfigUtil.getRpcUrl(chainName);
+      const routerContractAddress = ConfigUtil.getRouterAddress(
+        tokenSymbol,
+        chainName,
+      );
+
+      const routerContract = this.createReadOnlyContract(
+        rpcUrl,
+        routerContractAddress,
+      );
+
+      // Call balanceOf function (read-only call)
+      const balance = await routerContract.balanceOf.staticCall(account);
+
+      return balance.toString();
+    } catch (error) {
+      this.handleError(error, 'balanceOf');
+    }
+  }
 }
