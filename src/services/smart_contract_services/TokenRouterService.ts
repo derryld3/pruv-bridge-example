@@ -1,6 +1,5 @@
 import { ethers } from 'ethers';
 import { ConfigUtil } from '../../util/ConfigUtil';
-import { Unit } from '../../util/Unit';
 import tokenRouterAbi from '../../../contract/hyperlane/TokenRouter.abi.json';
 
 /**
