@@ -154,24 +154,12 @@ async function testBridgeServicePrecheck() {
 }
 
 async function main() {
-  // 1. Get gas payment quotes from Sepolia to Pruv Test
-  console.log('\n💰 Step 1: Getting gas payment quote from Sepolia to Pruv Test...');
-  try {
-    const gasPayment = await TokenRouterService.quoteGasPayment('USDC', 'sepolia', 'pruvtest');
-    const gasPaymentInEth = ethers.formatEther(gasPayment);
-    console.log(`🔍 Gas payment required: ${gasPaymentInEth} ETH`);
-    console.log('✅ Gas payment quote retrieved successfully!');
-  } catch (error) {
-    console.error('❌ Error getting gas payment quote:', error);
-    return;
-  }
-
-  // 2. Test BridgeService precheck with domain validation
-  console.log('\n🔍 Step 2: Testing BridgeService precheck with domain validation...');
+  // 1. Test BridgeService precheck with domain validation
+  console.log('\n🔍 Step 1: Testing BridgeService precheck with domain validation...');
   await testBridgeServicePrecheck();
 
-  // 3. Approve 1 USDC and check allowance from Sepolia to Pruv Test
-  console.log('\n🔐 Step 3: Approving 1 USDC and checking allowance...');
+  // 2. Approve 1 USDC and check allowance from Sepolia to Pruv Test
+  console.log('\n🔐 Step 2: Approving 1 USDC and checking allowance...');
   await approveUSDCAndCheckAllowance();
 
   console.log('\n' + '='.repeat(50));
