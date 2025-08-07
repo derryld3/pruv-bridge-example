@@ -1,6 +1,6 @@
 import { TokenRouterService } from './TokenRouterService';
 import { ethers } from 'ethers';
-import { ConfigUtil } from '../util/ConfigUtil';
+import { ConfigUtil } from '../../util/ConfigUtil';
 
 // Mock ethers
 jest.mock('ethers', () => ({
@@ -16,7 +16,7 @@ jest.mock('ethers', () => ({
 }));
 
 // Mock ConfigUtil
-jest.mock('../util/ConfigUtil', () => ({
+jest.mock('../../util/ConfigUtil', () => ({
   ConfigUtil: {
     getRpcUrl: jest.fn(),
     getRouterAddress: jest.fn(),
@@ -33,7 +33,7 @@ jest.mock('./ERC20Service', () => ({
 
 // Mock TokenRouter ABI
 jest.mock(
-  '../../contract/hyperlane/TokenRouter.abi.json',
+  '../../../contract/hyperlane/TokenRouter.abi.json',
   () => [
     {
       inputs: [],

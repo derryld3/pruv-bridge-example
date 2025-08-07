@@ -1,7 +1,7 @@
 import { ERC20Service } from './ERC20Service';
 import { ethers } from 'ethers';
-import { ConfigUtil } from '../util/ConfigUtil';
-import { Unit } from '../util/Unit';
+import { ConfigUtil } from '../../util/ConfigUtil';
+import { Unit } from '../../util/Unit';
 
 // Mock ethers
 jest.mock('ethers', () => ({
@@ -16,7 +16,7 @@ jest.mock('ethers', () => ({
 }));
 
 // Mock ConfigUtil
-jest.mock('../util/ConfigUtil', () => ({
+jest.mock('../../util/ConfigUtil', () => ({
   ConfigUtil: {
     getRpcUrl: jest.fn(),
     getCollateralAddress: jest.fn(),

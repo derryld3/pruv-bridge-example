@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
-import { ConfigUtil } from '../util/ConfigUtil';
-import { Unit } from '../util/Unit';
-import * as erc20Abi from '../../contract/@openzeppelin/ERC20.abi.json';
+import { ConfigUtil } from '../../util/ConfigUtil';
+import { Unit } from '../../util/Unit';
+import * as erc20Abi from '../../../contract/@openzeppelin/ERC20.abi.json';
 
 /**
  * ERC20 Service static utility class for interacting with ERC20 tokens

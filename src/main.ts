@@ -1,5 +1,5 @@
-import { ERC20Service } from './services/ERC20Service';
-import { TokenRouterService } from './services/TokenRouterService';
+import { ERC20Service } from './services/smart_contract_services/ERC20Service';
+import { TokenRouterService } from './services/smart_contract_services/TokenRouterService';
 import { ConfigUtil } from './util/ConfigUtil';
 import { Unit } from './util/Unit';
 import { ethers } from 'ethers';

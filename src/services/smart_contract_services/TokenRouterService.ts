@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
-import { ConfigUtil } from '../util/ConfigUtil';
-import TokenRouterABI from '../../contract/hyperlane/TokenRouter.abi.json';
+import { ConfigUtil } from '../../util/ConfigUtil';
+import { Unit } from '../../util/Unit';
+import tokenRouterAbi from '../../../contract/hyperlane/TokenRouter.abi.json';
 
 /**
  * TokenRouter Service static utility class for interacting with TokenRouter contracts
@@ -24,7 +25,7 @@ export class TokenRouterService {
     routerContractAddress: string,
   ): ethers.Contract {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
-    return new ethers.Contract(routerContractAddress, TokenRouterABI, provider);
+    return new ethers.Contract(routerContractAddress, tokenRouterAbi, provider);
   }
 
   /**
