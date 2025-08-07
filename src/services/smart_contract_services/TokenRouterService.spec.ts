@@ -148,74 +148,7 @@ describe('TokenRouterService', () => {
     });
   });
 
-  describe('domains', () => {
-    const tokenSymbol = 'USDC';
-    const chainName = 'sepolia';
 
-    beforeEach(() => {
-      jest.clearAllMocks();
-      (ConfigUtil.getRpcUrl as jest.Mock).mockReturnValue(
-        'https://sepolia.infura.io/v3/test',
-      );
-      (ConfigUtil.getRouterAddress as jest.Mock).mockReturnValue(
-        '0x1234567890123456789012345678901234567890',
-      );
-    });
-
-    it('should successfully get supported domains', async () => {
-      const mockDomains = [1, 2, 3, 7336];
-      const mockContract = {
-        domains: {
-          staticCall: jest.fn().mockResolvedValue(mockDomains),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
-      );
-
-      const result = await TokenRouterService.domains(tokenSymbol, chainName);
-
-      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith(chainName);
-      expect(ConfigUtil.getRouterAddress).toHaveBeenCalledWith(
-        tokenSymbol,
-        chainName,
-      );
-      expect(ethers.Contract).toHaveBeenCalledWith(
-        '0x1234567890123456789012345678901234567890',
-        expect.any(Array),
-        expect.any(Object),
-      );
-      expect(mockContract.domains.staticCall).toHaveBeenCalled();
-      expect(result).toEqual([1, 2, 3, 7336]);
-    });
-
-    it('should handle contract call errors', async () => {
-      const error = new Error('Contract call failed');
-      const mockContract = {
-        domains: {
-          staticCall: jest.fn().mockRejectedValue(error),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
-      );
-
-      await expect(
-        TokenRouterService.domains(tokenSymbol, chainName),
-      ).rejects.toThrow('Failed to domains: Contract call failed');
-    });
-
-    it('should handle ConfigUtil errors', async () => {
-      const error = new Error('Chain not found');
-      (ConfigUtil.getRpcUrl as jest.Mock).mockImplementation(() => {
-        throw error;
-      });
-
-      await expect(
-        TokenRouterService.domains(tokenSymbol, chainName),
-      ).rejects.toThrow('Failed to domains: Chain not found');
-    });
-  });
 
   describe('quoteGasPayment', () => {
     const tokenSymbol = 'USDC';

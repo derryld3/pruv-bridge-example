@@ -41,35 +41,7 @@ export class TokenRouterService {
     );
   }
 
-  /**
-   * Get the list of supported domain IDs from the TokenRouter contract
-   * @param tokenSymbol - The symbol of the token (e.g., 'USDC')
-   * @param chainName - The name of the chain
-   * @returns Promise<number[]> - Array of supported domain IDs
-   */
-  static async domains(
-    tokenSymbol: string,
-    chainName: string,
-  ): Promise<number[]> {
-    try {
-      const rpcUrl = ConfigUtil.getRpcUrl(chainName);
-      const routerContractAddress = ConfigUtil.getRouterAddress(
-        tokenSymbol,
-        chainName,
-      );
 
-      const routerContract = this.createReadOnlyContract(
-        rpcUrl,
-        routerContractAddress,
-      );
-
-      const domainIds = await routerContract.domains.staticCall();
-
-      return domainIds.map((domainId: any) => Number(domainId));
-    } catch (error) {
-      this.handleError(error, 'domains');
-    }
-  }
 
   /**
    * Quote the gas payment required for a cross-chain transfer to a specific destination
