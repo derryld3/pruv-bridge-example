@@ -165,78 +165,7 @@ describe('ERC20Service', () => {
     });
   });
 
-  describe('getBalance', () => {
-    beforeEach(() => {
-      (ConfigUtil.getRpcUrl as jest.Mock).mockReturnValue(
-        'https://mock-rpc.com',
-      );
-      (ConfigUtil.getCollateralAddress as jest.Mock).mockReturnValue(
-        '0xTokenAddress123',
-      );
-    });
 
-    it('should get balance using token symbol and chain name with WEI unit', async () => {
-      const mockBalance = '1000000000000000000'; // 1 token with 18 decimals
-      mockContract.balanceOf.staticCall.mockResolvedValue(mockBalance);
-
-      const result = await ERC20Service.getBalance(
-        'USDC',
-        'ethereum',
-        '0xholderaddress',
-        Unit.WEI,
-      );
-
-      expect(result).toBe(mockBalance);
-      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith('ethereum');
-      expect(ConfigUtil.getCollateralAddress).toHaveBeenCalledWith(
-        'USDC',
-        'ethereum',
-      );
-      expect(mockContract.balanceOf.staticCall).toHaveBeenCalledWith(
-        '0xholderaddress',
-      );
-    });
-
-    it('should get balance using token symbol and chain name with ETH unit', async () => {
-      const mockBalance = '500000000'; // 500 USDC with 6 decimals
-      mockContract.balanceOf.staticCall.mockResolvedValue(mockBalance);
-      mockContract.decimals.staticCall.mockResolvedValue(6);
-      (ethers.formatUnits as jest.Mock).mockReturnValue('500.0');
-
-      const result = await ERC20Service.getBalance(
-        'USDC',
-        'ethereum',
-        '0xholderaddress',
-        Unit.ETH,
-      );
-
-      expect(result).toBe('500.0');
-      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith('ethereum');
-      expect(ConfigUtil.getCollateralAddress).toHaveBeenCalledWith(
-        'USDC',
-        'ethereum',
-      );
-      expect(mockContract.balanceOf.staticCall).toHaveBeenCalledWith(
-        '0xholderaddress',
-      );
-      expect(ethers.formatUnits).toHaveBeenCalledWith(mockBalance, 6);
-    });
-
-    it('should throw error when balance call fails', async () => {
-      mockContract.balanceOf.staticCall.mockRejectedValue(
-        new Error('Balance call failed'),
-      );
-
-      await expect(
-        ERC20Service.getBalance(
-          'USDC',
-          'ethereum',
-          '0xholderaddress',
-          Unit.WEI,
-        ),
-      ).rejects.toThrow('Failed to get token balance: Balance call failed');
-    });
-  });
 
   describe('approve', () => {
     beforeEach(() => {

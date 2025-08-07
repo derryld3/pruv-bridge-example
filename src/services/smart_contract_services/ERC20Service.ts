@@ -131,46 +131,7 @@ export class ERC20Service {
     }
   }
 
-  /**
-   * Get the balance of a token holder
-   * @param tokenSymbol - The token symbol
-   * @param chainName - The chain name
-   * @param holderAddress - The address to check balance for
-   * @param unit - The unit of the returned balance (ETH or WEI)
-   * @returns Promise<string> - The balance as a string
-   */
-  static async getBalance(
-    tokenSymbol: string,
-    chainName: string,
-    holderAddress: string,
-    unit: Unit,
-  ): Promise<string> {
-    const rpcUrl = ConfigUtil.getRpcUrl(chainName);
-    const tokenContractAddress = ConfigUtil.getCollateralAddress(
-      tokenSymbol,
-      chainName,
-    );
-    try {
-      const tokenContract = ERC20Service.createReadOnlyContract(
-        rpcUrl,
-        tokenContractAddress,
-      );
 
-      // Call balanceOf function (read-only call)
-      const balance = await tokenContract.balanceOf.staticCall(holderAddress);
-
-      // Convert balance based on unit
-      return (await ERC20Service.convertAmount(
-        balance,
-        unit,
-        tokenSymbol,
-        chainName,
-        false,
-      )) as string;
-    } catch (error) {
-      ERC20Service.handleError(error, 'get token balance');
-    }
-  }
 
   /**
    * Approve a spender to spend tokens on behalf of the owner
