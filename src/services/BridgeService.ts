@@ -124,19 +124,23 @@ export class BridgeService {
   /**
    * Validates and converts amount to wei based on token decimals
    */
-  private static async validateAndConvertAmount(
+  private static async convertTokenAmountToWei(
     tokenSymbol: string,
     originChain: string,
     amount: string,
     amountUnit: Unit,
   ): Promise<bigint> {
+    // If already in wei, return immediately without fetching decimals
+    if (amountUnit === Unit.WEI) {
+      return ethers.parseUnits(amount, 0);
+    }
+
+    // For ETH units, fetch token decimals and convert
     const tokenDecimals = await ERC20Service.getDecimals(
       tokenSymbol,
       originChain,
     );
-    return amountUnit === Unit.ETH
-      ? ethers.parseUnits(amount, tokenDecimals)
-      : ethers.parseUnits(amount, 0);
+    return ethers.parseUnits(amount, tokenDecimals);
   }
 
   /**
@@ -208,7 +212,7 @@ export class BridgeService {
     senderAddressOrPrivateKey: string,
   ): Promise<boolean> {
     try {
-      // Basic input validation
+      // Basic input validation (can't be nullish)
       this.validateInputParameters(
         tokenSymbol,
         originChain,
@@ -218,22 +222,24 @@ export class BridgeService {
         senderAddressOrPrivateKey,
       );
 
-      // Address validation and resolution
+      // validate originChain and destinationChain are different
+      this.validateChainDifference(originChain, destinationChain);
+
+      // validate sender and receiver address
+      this.validateReceiverAddress(receiverAddress);
       const senderAddress = this.validateAndResolveSenderAddress(
         senderAddressOrPrivateKey,
       );
-      this.validateReceiverAddress(receiverAddress);
 
-      // Chain and router validation
-      this.validateChainDifference(originChain, destinationChain);
+      // validate bridge to destination chain is available and active
       await this.validateDestinationRouter(
         tokenSymbol,
         originChain,
         destinationChain,
       );
 
-      // Balance and amount validation
-      const amountInWei = await this.validateAndConvertAmount(
+      // validate sender's token balance is sufficient
+      const amountInWei = await BridgeService.convertTokenAmountToWei(
         tokenSymbol,
         originChain,
         amount,
@@ -246,7 +252,7 @@ export class BridgeService {
         amountInWei,
       );
 
-      // Gas and native balance validation
+      // Native balance validation (requires RPC call)
       await this.validateNativeBalanceForGas(
         tokenSymbol,
         originChain,
