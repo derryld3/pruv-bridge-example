@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { ConfigUtil } from '../util/ConfigUtil';
-import TokenRouterABI from '../../contract/hyperlane/TokenRouter.abi.json';
+import { ConfigUtil } from '../../util/ConfigUtil';
+import tokenRouterAbi from '../../../contract/hyperlane/TokenRouter.abi.json';
 
 /**
  * TokenRouter Service static utility class for interacting with TokenRouter contracts
@@ -24,7 +24,7 @@ export class TokenRouterService {
     routerContractAddress: string,
   ): ethers.Contract {
     const provider = new ethers.JsonRpcProvider(rpcUrl);
-    return new ethers.Contract(routerContractAddress, TokenRouterABI, provider);
+    return new ethers.Contract(routerContractAddress, tokenRouterAbi, provider);
   }
 
   /**
@@ -40,35 +40,7 @@ export class TokenRouterService {
     );
   }
 
-  /**
-   * Get the list of supported domain IDs from the TokenRouter contract
-   * @param tokenSymbol - The symbol of the token (e.g., 'USDC')
-   * @param chainName - The name of the chain
-   * @returns Promise<number[]> - Array of supported domain IDs
-   */
-  static async domains(
-    tokenSymbol: string,
-    chainName: string,
-  ): Promise<number[]> {
-    try {
-      const rpcUrl = ConfigUtil.getRpcUrl(chainName);
-      const routerContractAddress = ConfigUtil.getRouterAddress(
-        tokenSymbol,
-        chainName,
-      );
 
-      const routerContract = this.createReadOnlyContract(
-        rpcUrl,
-        routerContractAddress,
-      );
-
-      const domainIds = await routerContract.domains.staticCall();
-
-      return domainIds.map((domainId: any) => Number(domainId));
-    } catch (error) {
-      this.handleError(error, 'domains');
-    }
-  }
 
   /**
    * Quote the gas payment required for a cross-chain transfer to a specific destination
@@ -135,6 +107,39 @@ export class TokenRouterService {
       return routerAddress;
     } catch (error) {
       this.handleError(error, 'routers');
+    }
+  }
+
+  /**
+   * Get the balance of a specific account for the token
+   * @param tokenSymbol - The symbol of the token (e.g., 'USDC')
+   * @param chainName - The name of the chain where the router contract is deployed
+   * @param account - The address of the account to check balance for
+   * @returns Promise<string> - The balance amount as a string
+   */
+  static async balanceOf(
+    tokenSymbol: string,
+    chainName: string,
+    account: string,
+  ): Promise<string> {
+    try {
+      const rpcUrl = ConfigUtil.getRpcUrl(chainName);
+      const routerContractAddress = ConfigUtil.getRouterAddress(
+        tokenSymbol,
+        chainName,
+      );
+
+      const routerContract = this.createReadOnlyContract(
+        rpcUrl,
+        routerContractAddress,
+      );
+
+      // Call balanceOf function (read-only call)
+      const balance = await routerContract.balanceOf.staticCall(account);
+
+      return balance.toString();
+    } catch (error) {
+      this.handleError(error, 'balanceOf');
     }
   }
 }

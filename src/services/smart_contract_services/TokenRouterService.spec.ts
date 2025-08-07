@@ -1,6 +1,6 @@
 import { TokenRouterService } from './TokenRouterService';
 import { ethers } from 'ethers';
-import { ConfigUtil } from '../util/ConfigUtil';
+import { ConfigUtil } from '../../util/ConfigUtil';
 
 // Mock ethers
 jest.mock('ethers', () => ({
@@ -16,7 +16,7 @@ jest.mock('ethers', () => ({
 }));
 
 // Mock ConfigUtil
-jest.mock('../util/ConfigUtil', () => ({
+jest.mock('../../util/ConfigUtil', () => ({
   ConfigUtil: {
     getRpcUrl: jest.fn(),
     getRouterAddress: jest.fn(),
@@ -33,7 +33,7 @@ jest.mock('./ERC20Service', () => ({
 
 // Mock TokenRouter ABI
 jest.mock(
-  '../../contract/hyperlane/TokenRouter.abi.json',
+  '../../../contract/hyperlane/TokenRouter.abi.json',
   () => [
     {
       inputs: [],
@@ -86,6 +86,25 @@ jest.mock(
       stateMutability: 'view',
       type: 'function',
     },
+    {
+      inputs: [
+        {
+          internalType: 'address',
+          name: 'account',
+          type: 'address',
+        },
+      ],
+      name: 'balanceOf',
+      outputs: [
+        {
+          internalType: 'uint256',
+          name: '',
+          type: 'uint256',
+        },
+      ],
+      stateMutability: 'nonpayable',
+      type: 'function',
+    },
   ],
   { virtual: true },
 );
@@ -107,6 +126,9 @@ describe('TokenRouterService', () => {
     routers: {
       staticCall: jest.fn(),
     },
+    balanceOf: {
+      staticCall: jest.fn(),
+    },
   };
 
   beforeEach(() => {
@@ -126,74 +148,7 @@ describe('TokenRouterService', () => {
     });
   });
 
-  describe('domains', () => {
-    const tokenSymbol = 'USDC';
-    const chainName = 'sepolia';
 
-    beforeEach(() => {
-      jest.clearAllMocks();
-      (ConfigUtil.getRpcUrl as jest.Mock).mockReturnValue(
-        'https://sepolia.infura.io/v3/test',
-      );
-      (ConfigUtil.getRouterAddress as jest.Mock).mockReturnValue(
-        '0x1234567890123456789012345678901234567890',
-      );
-    });
-
-    it('should successfully get supported domains', async () => {
-      const mockDomains = [1, 2, 3, 7336];
-      const mockContract = {
-        domains: {
-          staticCall: jest.fn().mockResolvedValue(mockDomains),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
-      );
-
-      const result = await TokenRouterService.domains(tokenSymbol, chainName);
-
-      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith(chainName);
-      expect(ConfigUtil.getRouterAddress).toHaveBeenCalledWith(
-        tokenSymbol,
-        chainName,
-      );
-      expect(ethers.Contract).toHaveBeenCalledWith(
-        '0x1234567890123456789012345678901234567890',
-        expect.any(Array),
-        expect.any(Object),
-      );
-      expect(mockContract.domains.staticCall).toHaveBeenCalled();
-      expect(result).toEqual([1, 2, 3, 7336]);
-    });
-
-    it('should handle contract call errors', async () => {
-      const error = new Error('Contract call failed');
-      const mockContract = {
-        domains: {
-          staticCall: jest.fn().mockRejectedValue(error),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
-      );
-
-      await expect(
-        TokenRouterService.domains(tokenSymbol, chainName),
-      ).rejects.toThrow('Failed to domains: Contract call failed');
-    });
-
-    it('should handle ConfigUtil errors', async () => {
-      const error = new Error('Chain not found');
-      (ConfigUtil.getRpcUrl as jest.Mock).mockImplementation(() => {
-        throw error;
-      });
-
-      await expect(
-        TokenRouterService.domains(tokenSymbol, chainName),
-      ).rejects.toThrow('Failed to domains: Chain not found');
-    });
-  });
 
   describe('quoteGasPayment', () => {
     const tokenSymbol = 'USDC';
@@ -350,6 +305,80 @@ describe('TokenRouterService', () => {
       await expect(
         TokenRouterService.routers(tokenSymbol, chainName, domainId),
       ).rejects.toThrow('Failed to routers: Chain not found');
+    });
+  });
+
+  describe('balanceOf', () => {
+    const tokenSymbol = 'USDC';
+    const chainName = 'sepolia';
+    const account = '0x1234567890123456789012345678901234567890';
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (ConfigUtil.getRpcUrl as jest.Mock).mockReturnValue(
+        'https://rpc.example.com',
+      );
+      (ConfigUtil.getRouterAddress as jest.Mock).mockReturnValue(
+        '0x1234567890123456789012345678901234567890',
+      );
+    });
+
+    it('should successfully get balance for account', async () => {
+      const mockBalance = BigInt('1000000000000000000'); // 1 token with 18 decimals
+      const mockContract = {
+        balanceOf: {
+          staticCall: jest.fn().mockResolvedValue(mockBalance),
+        },
+      };
+      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
+        mockContract,
+      );
+
+      const result = await TokenRouterService.balanceOf(
+        tokenSymbol,
+        chainName,
+        account,
+      );
+
+      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith(chainName);
+      expect(ConfigUtil.getRouterAddress).toHaveBeenCalledWith(
+        tokenSymbol,
+        chainName,
+      );
+      expect(ethers.Contract).toHaveBeenCalledWith(
+        '0x1234567890123456789012345678901234567890',
+        expect.any(Array),
+        expect.any(Object),
+      );
+      expect(mockContract.balanceOf.staticCall).toHaveBeenCalledWith(account);
+      expect(result).toBe('1000000000000000000');
+    });
+
+    it('should handle contract call errors', async () => {
+      const error = new Error('Contract call failed');
+      const mockContract = {
+        balanceOf: {
+          staticCall: jest.fn().mockRejectedValue(error),
+        },
+      };
+      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
+        mockContract,
+      );
+
+      await expect(
+        TokenRouterService.balanceOf(tokenSymbol, chainName, account),
+      ).rejects.toThrow('Failed to balanceOf: Contract call failed');
+    });
+
+    it('should handle ConfigUtil errors', async () => {
+      const error = new Error('Chain not found');
+      (ConfigUtil.getRpcUrl as jest.Mock).mockImplementation(() => {
+        throw error;
+      });
+
+      await expect(
+        TokenRouterService.balanceOf(tokenSymbol, chainName, account),
+      ).rejects.toThrow('Failed to balanceOf: Chain not found');
     });
   });
 });
