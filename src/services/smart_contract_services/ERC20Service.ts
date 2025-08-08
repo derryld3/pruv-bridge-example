@@ -15,51 +15,6 @@ export class ERC20Service {
   }
 
   /**
-   * Converts amount between different units (ETH and WEI)
-   * @param tokenSymbol - Token symbol for getting decimals
-   * @param chainName - Chain name for getting decimals
-   * @param amount - The amount to convert (string or bigint)
-   * @param inputUnit - The input unit type (ETH or WEI)
-   * @param outputUnit - The output unit type (ETH or WEI)
-   * @returns Promise<string | bigint> - Converted amount
-   * @private
-   */
-  private static async convertAmount(
-    tokenSymbol: string,
-    chainName: string,
-    amount: string | bigint,
-    inputUnit: Unit,
-    outputUnit: Unit,
-  ): Promise<string | bigint> {
-    // If input and output units are the same, handle type conversion based on expected output
-    if (inputUnit === outputUnit) {
-      if (outputUnit === Unit.WEI) {
-        // For WEI: if input is string (user input), convert to BigInt for contract calls
-        // If input is already BigInt (from contract), convert to string for display
-        return typeof amount === 'string' ? BigInt(amount) : amount.toString();
-      } else {
-        return amount.toString();
-      }
-    }
-
-    // Get decimals only when conversion is needed
-    const decimals = await ERC20Service.getDecimals(tokenSymbol, chainName);
-
-    // Convert from ETH to WEI
-    if (inputUnit === Unit.ETH && outputUnit === Unit.WEI) {
-      return ethers.parseUnits(amount as string, decimals);
-    }
-    
-    // Convert from WEI to ETH
-    if (inputUnit === Unit.WEI && outputUnit === Unit.ETH) {
-      return ethers.formatUnits(amount as bigint, decimals);
-    }
-
-    // This should not happen with current Unit enum, but handle gracefully
-    throw new Error(`Unsupported unit conversion from ${inputUnit} to ${outputUnit}`);
-  }
-
-  /**
    * Handle errors with consistent formatting
    * @param error - The error to handle
    * @param operation - The operation that failed
@@ -136,14 +91,13 @@ export class ERC20Service {
       );
 
       // Convert allowance based on unit
-      const convertedAmount = await ERC20Service.convertAmount(
-        tokenSymbol,
-        chainName,
-        allowance,
-        Unit.WEI,
-        unit,
-      );
-      return convertedAmount.toString();
+      if (unit === Unit.WEI) {
+        return allowance.toString();
+      } else {
+        // Convert from WEI to ETH
+        const decimals = await ERC20Service.getDecimals(tokenSymbol, chainName);
+        return ethers.formatUnits(allowance, decimals);
+      }
     } catch (error) {
       ERC20Service.handleError(error, 'get token allowance');
     }
@@ -164,13 +118,14 @@ export class ERC20Service {
     );
     try {
       // Convert amount based on unit
-      const finalAmount = (await ERC20Service.convertAmount(
-        tokenSymbol,
-        chainName,
-        amount,
-        unit,
-        Unit.WEI,
-      )) as bigint;
+      let finalAmount: bigint;
+      if (unit === Unit.WEI) {
+        finalAmount = BigInt(amount);
+      } else {
+        // Convert from ETH to WEI
+        const decimals = await ERC20Service.getDecimals(tokenSymbol, chainName);
+        finalAmount = ethers.parseUnits(amount, decimals);
+      }
 
       // Create signer
       const provider = new ethers.JsonRpcProvider(rpcUrl);
