@@ -1,64 +1,48 @@
-import { ERC20Service } from './services/smart_contract_services/ERC20Service';
-import { TokenRouterService } from './services/smart_contract_services/TokenRouterService';
 import { BridgeService } from './services/BridgeService';
-import { ConfigUtil } from './util/ConfigUtil';
 import { Unit } from './util/Unit';
-import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
-async function approveUSDCAndCheckAllowance() {
-  const spender_address = ConfigUtil.getRouterAddress('USDC', 'sepolia'); // USDC Sepolia router address
-  
+async function executeTokenTransfer(): Promise<void> {
+  console.log('\n🚀 Step 3: Executing token transfer...');
   try {
-    console.log('\nApproving USDC spending...');
-    
     const privateKey = process.env.PRIVATE_KEY;
     if (!privateKey) {
       console.log('❌ PRIVATE_KEY not found in environment variables');
       return;
     }
-    
-    console.log('\n💰 Approving 1 USDC on Sepolia...');
-    try {
-      const approvalTx = await ERC20Service.approve(
-        'USDC',
-        'sepolia',
-        spender_address,
-        '1',
-        Unit.ETH,
-        privateKey
-      );
-      console.log(`✅ Approval successful! Transaction hash: ${approvalTx}`);
-      
-      // Get and display the allowance after approval
-      console.log('\n🔍 Checking allowance after approval...');
-      // Get the wallet address from the private key
-      const { ethers } = require('ethers');
-      const wallet = new ethers.Wallet(privateKey);
-      const ownerAddress = wallet.address;
-      
-      const allowance = await ERC20Service.getAllowance(
-        'USDC',
-        'sepolia',
-        ownerAddress,
-        spender_address,
-        Unit.ETH
-      );
-      console.log(`Current allowance for ${ownerAddress}: ${allowance} USDC`);
-    } catch (error) {
-      console.log(`❌ Approval failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    
-    console.log('\n' + '='.repeat(50));
-    console.log('✅ USDC approval and allowance check completed successfully!');
 
+    // Vitalik Buterin's Ethereum address as recipient
+    const vitalikAddress = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
+    
+    // Transfer 1 USDC
+    const transferAmount = '1';
+    
+    console.log(`🔄 Transferring 1 USDC from Sepolia to Pruv Test...`);
+    console.log(`   Recipient: ${vitalikAddress}`);
+    console.log(`   Amount: ${transferAmount} USDC`);
+    
+    const result = await BridgeService.transferToken(
+      'USDC',
+      'sepolia',
+      'pruvtest',
+      vitalikAddress,
+      transferAmount,
+      Unit.ETH,
+      privateKey
+    );
+    
+    console.log(`✅ Transfer successful!`);
+    console.log(`   Transaction Hash: ${result.transactionHash}`);
+    console.log(`   Message ID: ${result.messageId}`);
   } catch (error) {
-    console.error('❌ Error in USDC approval process:', error instanceof Error ? error.message : String(error));
+    console.log(`❌ Transfer failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
+
+
 
 async function testBridgeServicePrecheck() {
   try {
@@ -158,9 +142,9 @@ async function main() {
   console.log('\n🔍 Step 1: Testing BridgeService precheck with domain validation...');
   await testBridgeServicePrecheck();
 
-  // 2. Approve 1 USDC and check allowance from Sepolia to Pruv Test
-  console.log('\n🔐 Step 2: Approving 1 USDC and checking allowance...');
-  await approveUSDCAndCheckAllowance();
+  // 2. Execute token transfer using transferRemote
+  console.log('\n🚀 Step 2: Executing token transfer with automatic approval...');
+  await executeTokenTransfer();
 
   console.log('\n' + '='.repeat(50));
   console.log('✅ All steps completed successfully!');
@@ -171,4 +155,4 @@ if (require.main === module) {
   main();
 }
 
-export { main, approveUSDCAndCheckAllowance, testBridgeServicePrecheck };
+export { main, testBridgeServicePrecheck, executeTokenTransfer };
