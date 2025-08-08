@@ -1,14 +1,23 @@
 {
     "sepolia": {
         "chain_id": 11155111,
-        "rpc_urls": ["https://ethereum-sepolia.publicnode.com"]
+        "rpc_urls": ["https://ethereum-sepolia.publicnode.com"],
+        "core_addresses": {
+            "mailbox": "0x8233C1DfCBCe0F85A4F29dc6f4Db767FF6E4a3eA"
+        }
     },
     "pruvtest": {
         "chain_id": 7336,
-        "rpc_urls": ["https://rpc.testnet.pruv.network"]
+        "rpc_urls": ["https://rpc.testnet.pruv.network"],
+        "core_addresses": {
+            "mailbox": "0x72364A5F747a4e6E17b13Be4b421b879E95D95E7"
+        }
     },
     "arbitrumsepolia": {
         "chain_id": 421614,
-        "rpc_urls": ["https://arbitrum-sepolia.drpc.org"]
+        "rpc_urls": ["https://arbitrum-sepolia.drpc.org"],
+        "core_addresses": {
+            "mailbox": "0xd48CB9f46cFf0376D79044134302F96908ebB149"
+        }
     }
 }

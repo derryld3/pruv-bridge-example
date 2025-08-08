@@ -267,4 +267,109 @@ export class BridgeService {
       );
     }
   }
+
+  /**
+   * Transfers tokens from one chain to another using Hyperlane's cross-chain infrastructure.
+   * 
+   * This method performs a complete end-to-end token transfer including:
+   * - Input validation and precheck
+   * - Allowance verification (only approves if insufficient)
+   * - Gas payment quoting
+   * 
+   * @param tokenSymbol - The symbol of the token to transfer (e.g., 'USDC')
+   * @param originChain - The source chain name (e.g., 'sepolia')
+   * @param destinationChain - The destination chain name (e.g., 'pruvtest')
+   * @param receiverAddress - The recipient's address on the destination chain
+   * @param amount - The amount to transfer in human-readable format
+   * @param amountUnit - The unit of the amount (Unit.ETH for standard decimals)
+   * @param privateKey - The sender's private key for signing transactions
+   * 
+   * @returns Promise resolving to an object containing:
+   *   - transactionHash: The hash of the transfer transaction
+   *   - messageId: The Hyperlane message ID for tracking cross-chain delivery
+   */
+  static async transferToken(
+    tokenSymbol: string,
+    originChain: string,
+    destinationChain: string,
+    receiverAddress: string,
+    amount: string,
+    amountUnit: Unit,
+    privateKey: string,
+  ): Promise<{ transactionHash: string; messageId: string }> {
+
+    this.validateInputParameters(
+      tokenSymbol,
+      originChain,
+      destinationChain,
+      receiverAddress,
+      amount,
+      privateKey
+    );
+    
+    this.validateReceiverAddress(receiverAddress);
+    
+    const senderAddress = this.validateAndResolveSenderAddress(
+      privateKey,
+    );
+
+    const amountInWei = await this.convertTokenAmountToWei(
+      tokenSymbol,
+      originChain,
+      amount,
+      amountUnit
+    );
+
+    // Check current allowance before approving
+    const routerAddress = ConfigUtil.getRouterAddress(tokenSymbol, originChain);
+    
+    const currentAllowance = await ERC20Service.getAllowance(
+      tokenSymbol,
+      originChain,
+      senderAddress,
+      routerAddress,
+      amountUnit
+    );
+    
+    // Compare allowance with transfer amount
+    const currentAllowanceNum = parseFloat(currentAllowance);
+    const transferAmountNum = parseFloat(amount);
+    
+    if (currentAllowanceNum >= transferAmountNum) {
+      console.log(`✅ Current allowance (${currentAllowance}) is sufficient for transfer amount (${amount}), no need to approve`);
+    } else {
+      console.log(`🔐 Current allowance (${currentAllowance}) is insufficient, approving ${amount} ${tokenSymbol}...`);
+      await ERC20Service.approve(
+        tokenSymbol,
+        originChain,
+        routerAddress,
+        amount,
+        amountUnit,
+        privateKey
+      );
+    }
+
+    const gasQuote = await TokenRouterService.quoteGasPayment(
+      tokenSymbol,
+      originChain,
+      destinationChain
+    );
+
+    const recipientBytes32 = ethers.zeroPadValue(receiverAddress, 32);
+
+    const result = await TokenRouterService.transferRemote(
+      tokenSymbol,
+      originChain,
+      destinationChain,
+      recipientBytes32,
+      amountInWei,
+      BigInt(gasQuote),
+      privateKey
+    );
+
+    return {
+      transactionHash: result.transactionHash,
+      messageId: result.messageId
+    };
+  }
 }

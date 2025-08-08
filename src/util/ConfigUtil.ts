@@ -3,6 +3,9 @@ interface ChainConfig {
   [chainName: string]: {
     chain_id: number;
     rpc_urls: string[];
+    core_addresses?: {
+      mailbox: string;
+    };
   };
 }
 
@@ -115,5 +118,23 @@ export class ConfigUtil {
     }
 
     return chainInfo.collateral_address;
+  }
+
+  /**
+   * Get mailbox address for a given chain
+   * @param chainName - The name of the chain
+   * @returns string - The mailbox address
+   */
+  static getMailboxAddress(chainName: string): string {
+    const chainInfo = chainConfig[chainName];
+    if (!chainInfo) {
+      throw new Error(`Chain '${chainName}' not found in configuration`);
+    }
+
+    if (!chainInfo.core_addresses || !chainInfo.core_addresses.mailbox) {
+      throw new Error(`Mailbox address not found for chain '${chainName}'`);
+    }
+
+    return chainInfo.core_addresses.mailbox;
   }
 }
