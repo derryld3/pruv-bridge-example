@@ -2,6 +2,7 @@ import { ERC20Service } from './ERC20Service';
 import { ethers } from 'ethers';
 import { ConfigUtil } from '../../util/ConfigUtil';
 import { Unit } from '../../util/Unit';
+import { ERC20Caller } from '../../caller/smart_contract_caller/ERC20Caller';
 
 // Mock ethers
 jest.mock('ethers', () => ({
@@ -23,6 +24,15 @@ jest.mock('../../util/ConfigUtil', () => ({
   },
 }));
 
+// Mock ERC20Caller
+jest.mock('../../caller/smart_contract_caller/ERC20Caller', () => ({
+  ERC20Caller: {
+    getDecimals: jest.fn(),
+    approve: jest.fn(),
+    getAllowance: jest.fn(),
+  },
+}));
+
 // Mock ERC20 ABI
 jest.mock(
   '../../contract/@openzeppelin/ERC20.abi.json',
@@ -39,44 +49,16 @@ jest.mock(
 );
 
 describe('ERC20Service', () => {
-  const mockProvider = {
-    getNetwork: jest.fn(),
-  };
   const mockWallet = {
     address: '0x1234567890123456789012345678901234567890',
-  };
-  const mockContract = {
-    decimals: {
-      staticCall: jest.fn(),
-    },
-    balanceOf: {
-      staticCall: jest.fn(),
-    },
-    approve: jest.fn(),
-    allowance: {
-      staticCall: jest.fn(),
-    },
-  };
-  const mockTransaction = {
-    hash: '0xabcdef1234567890',
-    wait: jest.fn(),
-  };
-  const mockReceipt = {
-    hash: '0xabcdef1234567890',
-    status: 1,
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (ethers.JsonRpcProvider as unknown as jest.Mock).mockReturnValue(
-      mockProvider,
-    );
     (ethers.Wallet as unknown as jest.Mock).mockReturnValue(mockWallet);
-    (ethers.Contract as unknown as jest.Mock).mockReturnValue(mockContract);
     (ethers.parseEther as unknown as jest.Mock).mockImplementation(
       (value) => `${value}000000000000000000`,
     );
-    mockTransaction.wait.mockResolvedValue(mockReceipt);
   });
 
   describe('Constructor', () => {
@@ -87,48 +69,7 @@ describe('ERC20Service', () => {
     });
   });
 
-  describe('createReadOnlyContract', () => {
-    it('should create a read-only contract instance', () => {
-      const rpcUrl = 'https://test-rpc.com';
-      const contractAddress = '0x1234567890123456789012345678901234567890';
-
-      const result = (ERC20Service as any).createReadOnlyContract(
-        rpcUrl,
-        contractAddress,
-      );
-
-      expect(ethers.JsonRpcProvider).toHaveBeenCalledWith(rpcUrl);
-      expect(ethers.Contract).toHaveBeenCalledWith(
-        contractAddress,
-        expect.any(Array),
-        mockProvider,
-      );
-      expect(result).toBe(mockContract);
-    });
-  });
-
-  describe('createWriteContract', () => {
-    it('should create a write contract instance with signer', () => {
-      const rpcUrl = 'https://test-rpc.com';
-      const contractAddress = '0x1234567890123456789012345678901234567890';
-      const privateKey = '0xprivatekey123';
-
-      const result = (ERC20Service as any).createWriteContract(
-        rpcUrl,
-        contractAddress,
-        privateKey,
-      );
-
-      expect(ethers.JsonRpcProvider).toHaveBeenCalledWith(rpcUrl);
-      expect(ethers.Wallet).toHaveBeenCalledWith(privateKey, mockProvider);
-      expect(ethers.Contract).toHaveBeenCalledWith(
-        contractAddress,
-        expect.any(Array),
-        mockWallet,
-      );
-      expect(result).toBe(mockContract);
-    });
-  });
+  // Note: createReadOnlyContract and createWriteContract methods have been moved to ERC20Caller
 
   describe('getDecimals', () => {
     beforeEach(() => {
@@ -141,7 +82,7 @@ describe('ERC20Service', () => {
     });
 
     it('should get decimals using token symbol and chain name', async () => {
-      mockContract.decimals.staticCall.mockResolvedValue(6);
+      (ERC20Caller.getDecimals as jest.Mock).mockResolvedValue(6);
 
       const result = await ERC20Service.getDecimals('USDC', 'ethereum');
 
@@ -151,11 +92,14 @@ describe('ERC20Service', () => {
         'USDC',
         'ethereum',
       );
-      expect(mockContract.decimals.staticCall).toHaveBeenCalled();
+      expect(ERC20Caller.getDecimals).toHaveBeenCalledWith(
+        'https://mock-rpc.com',
+        '0xTokenAddress123',
+      );
     });
 
     it('should throw error when decimals call fails', async () => {
-      mockContract.decimals.staticCall.mockRejectedValue(
+      (ERC20Caller.getDecimals as jest.Mock).mockRejectedValue(
         new Error('Contract call failed'),
       );
 
@@ -178,8 +122,8 @@ describe('ERC20Service', () => {
     });
 
     it('should approve tokens using token symbol and chain name with ETH unit', async () => {
-      mockContract.approve.mockResolvedValue(mockTransaction);
-      mockContract.decimals.staticCall.mockResolvedValue(18);
+      (ERC20Caller.getDecimals as jest.Mock).mockResolvedValue(18);
+      (ERC20Caller.approve as jest.Mock).mockResolvedValue('0xabcdef1234567890');
       (ethers.parseUnits as jest.Mock).mockReturnValue(
         BigInt('100000000000000000000'),
       );
@@ -199,16 +143,21 @@ describe('ERC20Service', () => {
         'USDC',
         'ethereum',
       );
+      expect(ERC20Caller.getDecimals).toHaveBeenCalledWith(
+        'https://mock-rpc.com',
+        '0xTokenAddress123',
+      );
       expect(ethers.parseUnits).toHaveBeenCalledWith('100', 18);
-      expect(mockContract.approve).toHaveBeenCalledWith(
+      expect(ERC20Caller.approve).toHaveBeenCalledWith(
+        '0xTokenAddress123',
         '0xspenderaddress',
         BigInt('100000000000000000000'),
+        expect.any(Object),
       );
-      expect(mockTransaction.wait).toHaveBeenCalled();
     });
 
     it('should approve tokens using token symbol and chain name with WEI unit', async () => {
-      mockContract.approve.mockResolvedValue(mockTransaction);
+      (ERC20Caller.approve as jest.Mock).mockResolvedValue('0xabcdef1234567890');
 
       const result = await ERC20Service.approve(
         'USDC',
@@ -225,14 +174,17 @@ describe('ERC20Service', () => {
         'USDC',
         'ethereum',
       );
-      expect(mockContract.approve).toHaveBeenCalledWith(
+      expect(ERC20Caller.approve).toHaveBeenCalledWith(
+        '0xTokenAddress123',
         '0xspenderaddress',
         BigInt('50000000'),
+        expect.any(Object),
       );
     });
 
     it('should throw error when approve transaction fails', async () => {
-      mockContract.approve.mockRejectedValue(new Error('Approve failed'));
+      (ERC20Caller.getDecimals as jest.Mock).mockResolvedValue(18);
+      (ERC20Caller.approve as jest.Mock).mockRejectedValue(new Error('Approve failed'));
 
       await expect(
         ERC20Service.approve(
@@ -259,7 +211,7 @@ describe('ERC20Service', () => {
 
     it('should get allowance using token symbol and chain name', async () => {
       const mockAllowance = '1000000000'; // 1000 USDC
-      mockContract.allowance.staticCall.mockResolvedValue(mockAllowance);
+      (ERC20Caller.getAllowance as jest.Mock).mockResolvedValue(mockAllowance);
 
       const result = await ERC20Service.getAllowance(
         'USDC',
@@ -275,14 +227,16 @@ describe('ERC20Service', () => {
         'USDC',
         'ethereum',
       );
-      expect(mockContract.allowance.staticCall).toHaveBeenCalledWith(
+      expect(ERC20Caller.getAllowance).toHaveBeenCalledWith(
+        'https://mock-rpc.com',
+        '0xTokenAddress123',
         '0xowneraddress',
         '0xspenderaddress',
       );
     });
 
     it('should throw error when allowance call fails', async () => {
-      mockContract.allowance.staticCall.mockRejectedValue(
+      (ERC20Caller.getAllowance as jest.Mock).mockRejectedValue(
         new Error('Allowance call failed'),
       );
 
@@ -309,7 +263,7 @@ describe('ERC20Service', () => {
     });
 
     it('should handle non-Error objects in catch blocks', async () => {
-      mockContract.decimals.staticCall.mockRejectedValue('String error');
+      (ERC20Caller.getDecimals as jest.Mock).mockRejectedValue('String error');
 
       await expect(
         ERC20Service.getDecimals('USDC', 'ethereum'),
