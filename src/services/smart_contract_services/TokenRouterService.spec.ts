@@ -1,6 +1,7 @@
 import { TokenRouterService } from './TokenRouterService';
 import { ethers } from 'ethers';
 import { ConfigUtil } from '../../util/ConfigUtil';
+import { TokenRouterCaller } from '../../caller/smart_contract_caller/TokenRouterCaller';
 
 // Mock ethers
 jest.mock('ethers', () => ({
@@ -22,12 +23,22 @@ jest.mock('../../util/ConfigUtil', () => ({
     getRouterAddress: jest.fn(),
     getDomainId: jest.fn(),
     getCollateralAddress: jest.fn(),
+    getMailboxAddress: jest.fn(),
   },
 }));
 
 jest.mock('./ERC20Service', () => ({
   ERC20Service: {
     getDecimals: jest.fn(),
+  },
+}));
+
+jest.mock('../../caller/smart_contract_caller/TokenRouterCaller', () => ({
+  TokenRouterCaller: {
+    transferRemote: jest.fn(),
+    quoteGasPayment: jest.fn(),
+    getRouters: jest.fn(),
+    getBalanceOf: jest.fn(),
   },
 }));
 
@@ -167,14 +178,8 @@ describe('TokenRouterService', () => {
     });
 
     it('should successfully quote gas payment', async () => {
-      const mockGasPayment = BigInt('1000000000000000000'); // 1 ETH in wei
-      const mockContract = {
-        quoteGasPayment: {
-          staticCall: jest.fn().mockResolvedValue(mockGasPayment),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
+      (TokenRouterCaller.quoteGasPayment as jest.Mock).mockResolvedValue(
+        BigInt('1000000000000000000'),
       );
 
       const result = await TokenRouterService.quoteGasPayment(
@@ -189,12 +194,9 @@ describe('TokenRouterService', () => {
         sourceChainName,
       );
       expect(ConfigUtil.getDomainId).toHaveBeenCalledWith(destinationChainName);
-      expect(ethers.Contract).toHaveBeenCalledWith(
+      expect(TokenRouterCaller.quoteGasPayment).toHaveBeenCalledWith(
+        'https://rpc.sepolia.org',
         '0x1234567890123456789012345678901234567890',
-        expect.any(Array),
-        expect.any(Object),
-      );
-      expect(mockContract.quoteGasPayment.staticCall).toHaveBeenCalledWith(
         421614,
       );
       expect(result).toBe('1000000000000000000');
@@ -202,14 +204,7 @@ describe('TokenRouterService', () => {
 
     it('should handle contract call errors', async () => {
       const error = new Error('Contract call failed');
-      const mockContract = {
-        quoteGasPayment: {
-          staticCall: jest.fn().mockRejectedValue(error),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
-      );
+      (TokenRouterCaller.quoteGasPayment as jest.Mock).mockRejectedValue(error);
 
       await expect(
         TokenRouterService.quoteGasPayment(
@@ -217,7 +212,7 @@ describe('TokenRouterService', () => {
           sourceChainName,
           destinationChainName,
         ),
-      ).rejects.toThrow('Failed to quoteGasPayment: Contract call failed');
+      ).rejects.toThrow('Failed to quote gas payment: Contract call failed');
     });
 
     it('should handle ConfigUtil errors', async () => {
@@ -232,7 +227,7 @@ describe('TokenRouterService', () => {
           sourceChainName,
           destinationChainName,
         ),
-      ).rejects.toThrow('Failed to quoteGasPayment: Chain not found');
+      ).rejects.toThrow('Failed to quote gas payment: Chain not found');
     });
   });
 
@@ -253,13 +248,8 @@ describe('TokenRouterService', () => {
 
     it('should successfully get router address for domain', async () => {
       const mockRouterAddress = '0xaE68d312149335B477Fa2EafFB1a1a18E287aC1b';
-      const mockContract = {
-        routers: {
-          staticCall: jest.fn().mockResolvedValue(mockRouterAddress),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
+      (TokenRouterCaller.getRouters as jest.Mock).mockResolvedValue(
+        mockRouterAddress,
       );
 
       const result = await TokenRouterService.routers(
@@ -268,32 +258,26 @@ describe('TokenRouterService', () => {
         domainId,
       );
 
-      expect(ethers.JsonRpcProvider).toHaveBeenCalledWith(
+      expect(ConfigUtil.getRpcUrl).toHaveBeenCalledWith(chainName);
+      expect(ConfigUtil.getRouterAddress).toHaveBeenCalledWith(
+        tokenSymbol,
+        chainName,
+      );
+      expect(TokenRouterCaller.getRouters).toHaveBeenCalledWith(
         'https://rpc.example.com',
-      );
-      expect(ethers.Contract).toHaveBeenCalledWith(
         '0x1234567890123456789012345678901234567890',
-        expect.any(Array),
-        expect.any(Object),
+        domainId,
       );
-      expect(mockContract.routers.staticCall).toHaveBeenCalledWith(domainId);
       expect(result).toBe(mockRouterAddress);
     });
 
     it('should handle contract call errors', async () => {
       const error = new Error('Contract call failed');
-      const mockContract = {
-        routers: {
-          staticCall: jest.fn().mockRejectedValue(error),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
-      );
+      (TokenRouterCaller.getRouters as jest.Mock).mockRejectedValue(error);
 
       await expect(
         TokenRouterService.routers(tokenSymbol, chainName, domainId),
-      ).rejects.toThrow('Failed to routers: Contract call failed');
+      ).rejects.toThrow('Failed to get router address: Contract call failed');
     });
 
     it('should handle ConfigUtil errors', async () => {
@@ -304,7 +288,7 @@ describe('TokenRouterService', () => {
 
       await expect(
         TokenRouterService.routers(tokenSymbol, chainName, domainId),
-      ).rejects.toThrow('Failed to routers: Chain not found');
+      ).rejects.toThrow('Failed to get router address: Chain not found');
     });
   });
 
@@ -325,13 +309,8 @@ describe('TokenRouterService', () => {
 
     it('should successfully get balance for account', async () => {
       const mockBalance = BigInt('1000000000000000000'); // 1 token with 18 decimals
-      const mockContract = {
-        balanceOf: {
-          staticCall: jest.fn().mockResolvedValue(mockBalance),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
+      (TokenRouterCaller.getBalanceOf as jest.Mock).mockResolvedValue(
+        mockBalance,
       );
 
       const result = await TokenRouterService.balanceOf(
@@ -345,29 +324,21 @@ describe('TokenRouterService', () => {
         tokenSymbol,
         chainName,
       );
-      expect(ethers.Contract).toHaveBeenCalledWith(
+      expect(TokenRouterCaller.getBalanceOf).toHaveBeenCalledWith(
+        'https://rpc.example.com',
         '0x1234567890123456789012345678901234567890',
-        expect.any(Array),
-        expect.any(Object),
+        account,
       );
-      expect(mockContract.balanceOf.staticCall).toHaveBeenCalledWith(account);
       expect(result).toBe('1000000000000000000');
     });
 
     it('should handle contract call errors', async () => {
       const error = new Error('Contract call failed');
-      const mockContract = {
-        balanceOf: {
-          staticCall: jest.fn().mockRejectedValue(error),
-        },
-      };
-      (ethers.Contract as jest.MockedFunction<any>).mockReturnValue(
-        mockContract,
-      );
+      (TokenRouterCaller.getBalanceOf as jest.Mock).mockRejectedValue(error);
 
       await expect(
         TokenRouterService.balanceOf(tokenSymbol, chainName, account),
-      ).rejects.toThrow('Failed to balanceOf: Contract call failed');
+      ).rejects.toThrow('Failed to get balance: Contract call failed');
     });
 
     it('should handle ConfigUtil errors', async () => {
@@ -378,7 +349,7 @@ describe('TokenRouterService', () => {
 
       await expect(
         TokenRouterService.balanceOf(tokenSymbol, chainName, account),
-      ).rejects.toThrow('Failed to balanceOf: Chain not found');
+      ).rejects.toThrow('Failed to get balance: Chain not found');
     });
   });
 });
