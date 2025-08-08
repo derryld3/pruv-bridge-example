@@ -1,14 +1,13 @@
 import { ethers } from 'ethers';
 import { ConfigUtil } from '../../util/ConfigUtil';
 import { Unit } from '../../util/Unit';
-import * as erc20Abi from '../../../contract/@openzeppelin/ERC20.abi.json';
+import { ERC20Caller } from '../../caller/smart_contract_caller/ERC20Caller';
 
 /**
- * ERC20 Service static utility class for interacting with ERC20 tokens
+ * ERC20 Service - High-level service for ERC20 token operations
+ * Handles user input conversion, configuration resolution, and transaction signing
  */
 export class ERC20Service {
-  private static abi: any = (erc20Abi as any).default || erc20Abi;
-
   private constructor() {
     throw new Error(
       'ERC20Service is a static utility class and cannot be instantiated',
@@ -16,76 +15,48 @@ export class ERC20Service {
   }
 
   /**
-   * Create a contract instance for read-only operations
-   * @param rpcUrl - The RPC URL of the blockchain network
-   * @param tokenContractAddress - The address of the ERC20 token contract
-   * @returns ethers.Contract instance
-   * @private
-   */
-  private static createReadOnlyContract(
-    rpcUrl: string,
-    tokenContractAddress: string,
-  ): ethers.Contract {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    return new ethers.Contract(
-      tokenContractAddress,
-      ERC20Service.abi,
-      provider,
-    );
-  }
-
-  /**
-   * Create a contract instance for write operations
-   * @param rpcUrl - The RPC URL of the blockchain network
-   * @param tokenContractAddress - The address of the ERC20 token contract
-   * @param privateKey - The private key for signing transactions
-   * @returns ethers.Contract instance with signer
-   * @private
-   */
-  private static createWriteContract(
-    rpcUrl: string,
-    tokenContractAddress: string,
-    privateKey: string,
-  ): ethers.Contract {
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const wallet = new ethers.Wallet(privateKey, provider);
-    return new ethers.Contract(tokenContractAddress, ERC20Service.abi, wallet);
-  }
-
-  /**
-   * Convert amount based on unit type
-   * @param amount - The amount to convert
-   * @param unit - The unit type (ETH or WEI)
+   * Converts amount between different units (ETH and WEI)
    * @param tokenSymbol - Token symbol for getting decimals
    * @param chainName - Chain name for getting decimals
-   * @param isInput - Whether this is input conversion (ETH to WEI) or output conversion (WEI to ETH)
+   * @param amount - The amount to convert (string or bigint)
+   * @param inputUnit - The input unit type (ETH or WEI)
+   * @param outputUnit - The output unit type (ETH or WEI)
    * @returns Promise<string | bigint> - Converted amount
    * @private
    */
   private static async convertAmount(
-    amount: string | bigint,
-    unit: Unit,
     tokenSymbol: string,
     chainName: string,
-    isInput: boolean,
+    amount: string | bigint,
+    inputUnit: Unit,
+    outputUnit: Unit,
   ): Promise<string | bigint> {
-    if (unit === Unit.ETH) {
-      const decimals = await ERC20Service.getDecimals(tokenSymbol, chainName);
-      if (isInput) {
-        // Convert from ETH units to WEI (for input)
-        return ethers.parseUnits(amount as string, decimals);
+    // If input and output units are the same, handle type conversion based on expected output
+    if (inputUnit === outputUnit) {
+      if (outputUnit === Unit.WEI) {
+        // For WEI: if input is string (user input), convert to BigInt for contract calls
+        // If input is already BigInt (from contract), convert to string for display
+        return typeof amount === 'string' ? BigInt(amount) : amount.toString();
       } else {
-        // Convert from WEI to ETH units (for output)
-        return ethers.formatUnits(amount as bigint, decimals);
-      }
-    } else {
-      // WEI - return as-is
-      if (isInput) {
-        return BigInt(amount as string);
-      } else {
-        return (amount as bigint).toString();
+        return amount.toString();
       }
     }
+
+    // Get decimals only when conversion is needed
+    const decimals = await ERC20Service.getDecimals(tokenSymbol, chainName);
+
+    // Convert from ETH to WEI
+    if (inputUnit === Unit.ETH && outputUnit === Unit.WEI) {
+      return ethers.parseUnits(amount as string, decimals);
+    }
+    
+    // Convert from WEI to ETH
+    if (inputUnit === Unit.WEI && outputUnit === Unit.ETH) {
+      return ethers.formatUnits(amount as bigint, decimals);
+    }
+
+    // This should not happen with current Unit enum, but handle gracefully
+    throw new Error(`Unsupported unit conversion from ${inputUnit} to ${outputUnit}`);
   }
 
   /**
@@ -117,21 +88,11 @@ export class ERC20Service {
       chainName,
     );
     try {
-      const tokenContract = ERC20Service.createReadOnlyContract(
-        rpcUrl,
-        tokenContractAddress,
-      );
-
-      // Call decimals function (read-only call)
-      const decimals = await tokenContract.decimals.staticCall();
-
-      return Number(decimals);
+      return await ERC20Caller.getDecimals(rpcUrl, tokenContractAddress);
     } catch (error) {
       ERC20Service.handleError(error, 'get token decimals');
     }
   }
-
-
 
   /**
    * Approve a spender to spend tokens on behalf of the owner
@@ -143,46 +104,6 @@ export class ERC20Service {
    * @param privateKey - The private key of the token owner
    * @returns Promise<string> - The transaction hash
    */
-  static async approve(
-    tokenSymbol: string,
-    chainName: string,
-    spenderAddress: string,
-    amount: string,
-    unit: Unit,
-    privateKey: string,
-  ): Promise<string> {
-    const rpcUrl = ConfigUtil.getRpcUrl(chainName);
-    const tokenContractAddress = ConfigUtil.getCollateralAddress(
-      tokenSymbol,
-      chainName,
-    );
-    try {
-      const tokenContract = ERC20Service.createWriteContract(
-        rpcUrl,
-        tokenContractAddress,
-        privateKey,
-      );
-
-      // Convert amount based on unit
-      const finalAmount = (await ERC20Service.convertAmount(
-        amount,
-        unit,
-        tokenSymbol,
-        chainName,
-        true,
-      )) as bigint;
-
-      // Call approve function
-      const tx = await tokenContract.approve(spenderAddress, finalAmount);
-
-      // Wait for transaction confirmation
-      const receipt = await tx.wait();
-
-      return receipt.hash;
-    } catch (error) {
-      ERC20Service.handleError(error, 'approve token');
-    }
-  }
 
   /**
    * Get the allowance of a spender for a specific owner
@@ -206,27 +127,64 @@ export class ERC20Service {
       chainName,
     );
     try {
-      const tokenContract = ERC20Service.createReadOnlyContract(
+      // Get allowance in wei through caller
+      const allowance = await ERC20Caller.getAllowance(
         rpcUrl,
         tokenContractAddress,
-      );
-
-      // Call allowance function (read-only call)
-      const allowance = await tokenContract.allowance.staticCall(
         ownerAddress,
         spenderAddress,
       );
 
       // Convert allowance based on unit
-      return (await ERC20Service.convertAmount(
-        allowance,
-        unit,
+      const convertedAmount = await ERC20Service.convertAmount(
         tokenSymbol,
         chainName,
-        false,
-      )) as string;
+        allowance,
+        Unit.WEI,
+        unit,
+      );
+      return convertedAmount.toString();
     } catch (error) {
       ERC20Service.handleError(error, 'get token allowance');
+    }
+  }
+
+  static async approve(
+    tokenSymbol: string,
+    chainName: string,
+    spenderAddress: string,
+    amount: string,
+    unit: Unit,
+    privateKey: string,
+  ): Promise<string> {
+    const rpcUrl = ConfigUtil.getRpcUrl(chainName);
+    const tokenContractAddress = ConfigUtil.getCollateralAddress(
+      tokenSymbol,
+      chainName,
+    );
+    try {
+      // Convert amount based on unit
+      const finalAmount = (await ERC20Service.convertAmount(
+        tokenSymbol,
+        chainName,
+        amount,
+        unit,
+        Unit.WEI,
+      )) as bigint;
+
+      // Create signer
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const signer = new ethers.Wallet(privateKey, provider);
+
+      // Call approve function through caller
+      return await ERC20Caller.approve(
+        tokenContractAddress,
+        spenderAddress,
+        finalAmount,
+        signer,
+      );
+    } catch (error) {
+      ERC20Service.handleError(error, 'approve token');
     }
   }
 }
